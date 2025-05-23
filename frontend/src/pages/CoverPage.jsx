@@ -1,7 +1,7 @@
 import React from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion, useScroll, useTransform } from "framer-motion";
-import buzzshotLogo from "../assets/react.svg";
+import buzzshotLogo from "../assets/BuzzShot_logo.png";
 import { Link } from "react-router-dom";
 
 const CoverPage = () => {
@@ -63,7 +63,7 @@ const CoverPage = () => {
         <p>
           BuzzShot is your go-to platform for discovering the latest movies and
           series. With detailed descriptions, user ratings, and reviews, you'll
-          always know what's trending and what’s worth watching.
+          always know what's trending and what's worth watching.
         </p>
         <p>
           Leave your own ratings, share your thoughts with other users, and

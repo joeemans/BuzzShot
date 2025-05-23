@@ -5,3 +5,15 @@ CREATE TABLE users (
   password VARCHAR(255) NOT NULL,
   CHECK (char_length(password) >= 6)
 );
+
+CREATE TABLE reviews (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(255) NOT NULL,
+  media_id VARCHAR(255) NOT NULL,
+  media_type VARCHAR(20) NOT NULL,
+  review TEXT NOT NULL,
+  rating INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE reviews ADD CONSTRAINT unique_user_media_review UNIQUE (username, media_id, media_type);

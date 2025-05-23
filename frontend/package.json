@@ -11,10 +11,16 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.6",
+    "dotenv": "^16.5.0",
     "framer-motion": "^12.11.3",
+    "keen-slider": "^6.8.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-multi-carousel": "^2.8.6",
     "react-router-dom": "^7.6.0",
+    "react-slick": "^0.30.3",
+    "slick-carousel": "^1.8.1",
+    "swiper": "^11.2.6",
     "tailwindcss": "^4.1.6"
   },
   "devDependencies": {

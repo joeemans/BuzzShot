@@ -242,6 +242,102 @@ app.post("/logout", (req, res) => {
   });
 });
 
+// Review endpoints
+// POST a review (movie or tv)
+app.post("/api/reviews", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const { mediaId, mediaType, review, rating } = req.body;
+  const username = req.user.username;
+
+  if (!mediaId || !mediaType || !review || !rating) {
+    return res.status(400).json({ error: "Missing fields" });
+  }
+
+  try {
+    // Check if user already reviewed this media
+    const existingReview = await db.query(
+      "SELECT * FROM reviews WHERE username = $1 AND media_id = $2 AND media_type = $3",
+      [username, mediaId, mediaType]
+    );
+
+    if (existingReview.rows.length > 0) {
+      // Update existing review
+      await db.query(
+        "UPDATE reviews SET review = $1, rating = $2 WHERE username = $3 AND media_id = $4 AND media_type = $5",
+        [review, rating, username, mediaId, mediaType]
+      );
+    } else {
+      // Insert new review
+      await db.query(
+        "INSERT INTO reviews (username, media_id, media_type, review, rating, created_at) VALUES ($1, $2, $3, $4, $5, NOW())",
+        [username, mediaId, mediaType, review, rating]
+      );
+    }
+
+    // Fetch the latest review for this user/media
+    const updatedReview = await db.query(
+      "SELECT username, review, rating, created_at FROM reviews WHERE username = $1 AND media_id = $2 AND media_type = $3 ORDER BY created_at DESC LIMIT 1",
+      [username, mediaId, mediaType]
+    );
+
+    res.json(updatedReview.rows[0]);
+  } catch (err) {
+    console.error("Error handling review:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GET reviews for a movie or tv
+app.get("/api/reviews/:mediaType/:mediaId", async (req, res) => {
+  const { mediaType, mediaId } = req.params;
+
+  try {
+    const result = await db.query(
+      "SELECT username, review, rating, created_at FROM reviews WHERE media_id = $1 AND media_type = $2 ORDER BY created_at DESC",
+      [mediaId, mediaType]
+    );
+    // Calculate average rating
+    const avgResult = await db.query(
+      "SELECT ROUND(AVG(rating)::numeric, 1) as average_rating FROM reviews WHERE media_id = $1 AND media_type = $2",
+      [mediaId, mediaType]
+    );
+    res.json({
+      reviews: result.rows,
+      averageRating: parseFloat(avgResult.rows[0].average_rating) || 0,
+    });
+  } catch (err) {
+    console.error("Error fetching reviews:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get average rating for a movie
+app.get("/api/ratings/:movieId", async (req, res) => {
+  const { movieId } = req.params;
+
+  try {
+    const result = await db.query(
+      `SELECT 
+        COUNT(*) as total_reviews,
+        ROUND(AVG(rating)::numeric, 1) as average_rating
+       FROM reviews 
+       WHERE movie_id = $1`,
+      [movieId]
+    );
+
+    res.json({
+      total_reviews: parseInt(result.rows[0].total_reviews),
+      average_rating: parseFloat(result.rows[0].average_rating) || 0,
+    });
+  } catch (err) {
+    console.error("Error calculating average rating:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
