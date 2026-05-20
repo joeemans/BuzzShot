@@ -9,6 +9,15 @@
   --accent: 174 66% 48%;
 }
 
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-muted: hsl(var(--muted));
+  --color-border: hsl(var(--border));
+  --color-primary: hsl(var(--primary));
+  --color-accent: hsl(var(--accent));
+}
+
 * {
   box-sizing: border-box;
 }

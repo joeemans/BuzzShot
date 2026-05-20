@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { Button } from './button';
+import { cn } from '@/lib/utils';
 
 export function SearchBar({ defaultValue = '', compact = false }: { defaultValue?: string; compact?: boolean }) {
   const [query, setQuery] = useState(defaultValue);
@@ -19,16 +20,28 @@ export function SearchBar({ defaultValue = '', compact = false }: { defaultValue
     <form
       onSubmit={onSubmit}
       role="search"
-      className="flex w-full items-center gap-2 rounded-md border border-border bg-black/35 p-1 shadow-2xl shadow-black/20 focus-within:ring-2 focus-within:ring-primary/70"
+      className={cn(
+        'flex w-full items-center gap-2 border bg-black/35 p-1 shadow-2xl shadow-black/20 transition focus-within:ring-2 focus-within:ring-primary/70',
+        compact
+          ? 'rounded-full border-white/[0.12] bg-white/[0.045] shadow-none'
+          : 'rounded-md border-border',
+      )}
     >
-      <Search aria-hidden="true" className="ml-3 h-5 w-5 text-muted" />
+      <Search aria-hidden="true" className={cn('ml-3 h-5 w-5 text-muted', compact && 'h-4 w-4')} />
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Search movies, series, people, lists…"
-        className="min-w-0 flex-1 bg-transparent px-1 py-3 text-sm text-foreground focus-visible:outline-none placeholder:text-muted"
+        className={cn(
+          'min-w-0 flex-1 bg-transparent px-1 text-sm text-foreground placeholder:text-muted focus-visible:outline-none',
+          compact ? 'py-2.5' : 'py-3',
+        )}
       />
-      <Button type="submit" className={compact ? 'px-3' : undefined}>
+      <Button
+        type="submit"
+        variant={compact ? 'secondary' : 'primary'}
+        className={compact ? 'min-h-9 rounded-full border-white/[0.12] px-4' : undefined}
+      >
         Search
       </Button>
     </form>

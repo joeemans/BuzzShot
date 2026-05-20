@@ -1,5 +1,16 @@
 import Link from 'next/link';
-import { Bookmark, CheckCircle2, Heart, ListPlus, Lock, ShieldCheck } from 'lucide-react';
+import {
+  Bookmark,
+  CheckCircle2,
+  Heart,
+  ListPlus,
+  Lock,
+  Network,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  UsersRound,
+} from 'lucide-react';
 import {
   FavoriteButton,
   RatingControl,
@@ -51,6 +62,76 @@ function SectionHeader({
         {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{description}</p> : null}
       </div>
       {action}
+    </div>
+  );
+}
+
+const tasteGraphNodes = [
+  {
+    label: 'Ratings',
+    detail: '4+ star signals',
+    className: 'left-[6%] top-[18%]',
+    icon: Star,
+    tone: 'border-primary/[0.35] text-primary',
+  },
+  {
+    label: 'Lists',
+    detail: 'Weekend queues',
+    className: 'left-[42%] top-[8%]',
+    icon: ListPlus,
+    tone: 'border-accent/[0.35] text-accent',
+  },
+  {
+    label: 'People',
+    detail: 'Trusted follows',
+    className: 'right-[5%] top-[36%]',
+    icon: UsersRound,
+    tone: 'border-white/[0.18] text-foreground',
+  },
+  {
+    label: 'Reviews',
+    detail: 'Spoiler-safe takes',
+    className: 'left-[22%] bottom-[10%]',
+    icon: Network,
+    tone: 'border-primary/[0.28] text-primary',
+  },
+  {
+    label: 'For You',
+    detail: 'Reasoned picks',
+    className: 'right-[18%] bottom-[13%]',
+    icon: Sparkles,
+    tone: 'border-accent/[0.32] text-accent',
+  },
+];
+
+function TasteGraphPreview() {
+  return (
+    <div className="relative min-h-[18rem] overflow-hidden rounded-lg border border-white/[0.1] bg-black/[0.34] shadow-2xl shadow-black/30">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(246,192,47,0.12),transparent_12rem),radial-gradient(circle_at_75%_62%,rgba(41,203,190,0.14),transparent_13rem)]" />
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 420 288"
+        preserveAspectRatio="none"
+        className="absolute inset-0 h-full w-full"
+      >
+        <path d="M68 74 C145 22 219 29 276 106" stroke="rgba(246,192,47,0.38)" strokeWidth="2" fill="none" />
+        <path d="M277 106 C220 155 180 194 112 228" stroke="rgba(41,203,190,0.34)" strokeWidth="2" fill="none" />
+        <path d="M112 228 C206 254 267 241 337 217" stroke="rgba(246,192,47,0.3)" strokeWidth="2" fill="none" />
+        <path d="M336 129 C328 165 329 190 337 217" stroke="rgba(255,255,255,0.22)" strokeWidth="2" fill="none" />
+        <path d="M174 46 C187 105 153 169 112 228" stroke="rgba(255,255,255,0.18)" strokeWidth="2" fill="none" />
+      </svg>
+      {tasteGraphNodes.map((node) => (
+        <div
+          key={node.label}
+          className={`absolute w-36 rounded-md border bg-background/[0.82] p-3 shadow-xl shadow-black/30 backdrop-blur ${node.className} ${node.tone}`}
+        >
+          <div className="flex items-center gap-2">
+            <node.icon aria-hidden="true" className="h-4 w-4" />
+            <p className="text-sm font-bold text-foreground">{node.label}</p>
+          </div>
+          <p className="mt-1 text-xs text-muted">{node.detail}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -141,15 +222,30 @@ export async function HomePage() {
         </div>
       </section>
 
-      <section className="section py-16">
-        <div className="rounded-md border border-border bg-primary p-8 text-black">
-          <h2 className="text-3xl font-black">Build your taste graph.</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6">
-            Rate, review, follow, and list your way into recommendations that can explain themselves.
-          </p>
-          <ButtonLink href="/register" variant="secondary" className="mt-6 border-black/20 bg-black text-white">
-            Join BuzzShot
-          </ButtonLink>
+      <section className="py-16">
+        <div className="border-y border-white/[0.08] bg-[radial-gradient(circle_at_18%_0%,rgba(246,192,47,0.16),transparent_26rem),radial-gradient(circle_at_86%_72%,rgba(41,203,190,0.13),transparent_24rem),linear-gradient(135deg,rgba(9,13,22,0.98),rgba(3,6,12,0.97))]">
+          <div className="section grid items-center gap-10 py-12 lg:grid-cols-[1fr_27rem]">
+            <div>
+              <p className="text-sm font-bold uppercase text-primary">Recommendations</p>
+              <h2 className="mt-3 max-w-2xl text-4xl font-black leading-tight sm:text-5xl">
+                Build your taste graph.
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-foreground/[0.78]">
+                Rate, review, follow, and list your way into recommendations that can explain themselves.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-muted">
+                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">Ratings</span>
+                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">Reviews</span>
+                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">Follows</span>
+                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">Lists</span>
+              </div>
+              <ButtonLink href="/register" className="mt-8 rounded-full px-5 shadow-[0_0_32px_rgba(246,192,47,0.22)]">
+                <Sparkles aria-hidden="true" className="h-4 w-4" />
+                Join BuzzShot
+              </ButtonLink>
+            </div>
+            <TasteGraphPreview />
+          </div>
         </div>
       </section>
     </>
