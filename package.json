@@ -1,0 +1,26 @@
+{
+  "name": "buzzshot-v2",
+  "private": true,
+  "version": "0.1.0",
+  "description": "BuzzShot V2 - a social movie and series discovery platform.",
+  "packageManager": "pnpm@11.1.3",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter web --filter api dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "format": "prettier --check .",
+    "db:migrate": "pnpm --filter api prisma:migrate:dev",
+    "db:deploy": "pnpm --filter api prisma:migrate:deploy",
+    "db:seed": "pnpm --filter api db:seed"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3"
+  }
+}
