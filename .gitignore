@@ -46,7 +46,12 @@ test-results/
 skills-lock.json
 
 # Local agent/tooling artifacts
+.agents/
 .agents/skills/
+.dockerignore
+.npmrc
+.prettierrc
+AGENTS.md
 *:Zone.Identifier
 
 # Editor directories and files

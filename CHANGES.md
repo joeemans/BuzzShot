@@ -14,3 +14,4 @@ This file documents intentional implementation choices and deviations from `.age
 - Playwright E2E is configured, but local execution is blocked on this Ubuntu 26.04 image because Playwright does not currently provide a Chromium binary for it.
 - Local Docker infrastructure is defined and verified with healthy PostgreSQL and Redis containers after pulling images explicitly.
 - Frontend quality pass added a skip link, image-domain preconnect, explicit image dimensions/fetch priority, focus-visible rings, input autocomplete/name attributes, and dark-theme native input styling.
+- Docker Compose now runs the full local app stack: Next.js web, NestJS API, PostgreSQL, and Redis, with named volumes for persistent database/cache data and future API file storage.

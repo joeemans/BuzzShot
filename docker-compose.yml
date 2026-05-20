@@ -2,16 +2,17 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: buzzshot-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: buzzshot
-      POSTGRES_USER: buzzshot
-      POSTGRES_PASSWORD: buzzshot
+      POSTGRES_DB: ${POSTGRES_DB:-buzzshot}
+      POSTGRES_USER: ${POSTGRES_USER:-buzzshot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-buzzshot}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U buzzshot -d buzzshot"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -19,8 +20,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: buzzshot-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -29,6 +32,72 @@ services:
       timeout: 5s
       retries: 10
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: buzzshot-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      API_URL: http://localhost:${API_PORT:-4000}
+      WEB_URL: http://localhost:${WEB_PORT:-3000}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-buzzshot}:${POSTGRES_PASSWORD:-buzzshot}@postgres:5432/${POSTGRES_DB:-buzzshot}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-development-access-secret-change-me}
+      JWT_ACCESS_TTL_SECONDS: ${JWT_ACCESS_TTL_SECONDS:-900}
+      REFRESH_TOKEN_COOKIE_NAME: ${REFRESH_TOKEN_COOKIE_NAME:-buzzshot_refresh}
+      REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-30}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TMDB_API_BASE_URL: ${TMDB_API_BASE_URL:-https://api.themoviedb.org/3}
+      TMDB_IMAGE_BASE_URL: ${TMDB_IMAGE_BASE_URL:-https://image.tmdb.org/t/p}
+      TMDB_READ_ACCESS_TOKEN: ${TMDB_READ_ACCESS_TOKEN:-}
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:4000/api/auth/google/callback}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    volumes:
+      - api-storage:/app/apps/api/storage
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: http://localhost:${WEB_PORT:-3000}
+        NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-4000}/api
+    container_name: buzzshot-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_URL: http://localhost:${WEB_PORT:-3000}
+      NEXT_PUBLIC_API_URL: http://localhost:${API_PORT:-4000}/api
+      INTERNAL_API_URL: http://api:4000/api
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+
 volumes:
+  api-storage:
   postgres-data:
   redis-data:

@@ -23,6 +23,24 @@ pnpm dev
 Web runs on `http://localhost:3000`.
 API runs on `http://localhost:4000/api`.
 
+## Docker Compose
+
+Run the full local stack with web, API, PostgreSQL, and Redis:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+The Compose stack exposes:
+
+- Web: `http://localhost:3000`
+- API: `http://localhost:4000/api`
+- PostgreSQL: `localhost:5432`
+- Redis: `localhost:6379`
+
+Persistent named volumes are mounted for PostgreSQL data, Redis append-only data, and future API file storage. The API container runs Prisma migrations before starting.
+
 ## Required Environment
 
 Set `TMDB_READ_ACCESS_TOKEN` in `.env` for live TMDB-backed discovery. `TMDB_API_KEY` is also supported as a fallback. The frontend never calls TMDB directly.
