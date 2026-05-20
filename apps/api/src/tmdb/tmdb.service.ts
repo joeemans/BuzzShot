@@ -1,0 +1,275 @@
+import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { RedisService } from '../database/redis.service.js';
+import type { Env } from '../config/env.js';
+import type {
+  MediaDetail,
+  MediaSummary,
+  MediaType,
+  TmdbCastMember,
+  TmdbGenre,
+  TmdbListResponse,
+  TmdbMovie,
+  TmdbSearchResult,
+  TmdbSeries,
+  TmdbVideo,
+} from './tmdb.types.js';
+
+type TmdbConfiguration = {
+  images?: {
+    secure_base_url?: string;
+    poster_sizes?: string[];
+    backdrop_sizes?: string[];
+    profile_sizes?: string[];
+  };
+};
+
+const fallbackGenres = new Map<number, string>([
+  [28, 'Action'],
+  [12, 'Adventure'],
+  [16, 'Animation'],
+  [35, 'Comedy'],
+  [80, 'Crime'],
+  [18, 'Drama'],
+  [14, 'Fantasy'],
+  [27, 'Horror'],
+  [9648, 'Mystery'],
+  [10749, 'Romance'],
+  [878, 'Science Fiction'],
+  [53, 'Thriller'],
+]);
+
+const cacheTtls = {
+  trending: 60 * 60 * 6,
+  search: 60 * 60 * 24,
+  details: 60 * 60 * 24 * 7,
+  genres: 60 * 60 * 24 * 30,
+};
+
+@Injectable()
+export class TmdbService {
+  private readonly apiBaseUrl: string;
+  private readonly imageBaseUrl: string;
+  private genreMap = fallbackGenres;
+
+  constructor(
+    @Inject(ConfigService)
+    private readonly config: ConfigService<Env, true>,
+    @Inject(RedisService)
+    private readonly redis: RedisService,
+  ) {
+    this.apiBaseUrl = this.config.get('TMDB_API_BASE_URL', { infer: true });
+    this.imageBaseUrl = this.config.get('TMDB_IMAGE_BASE_URL', { infer: true });
+  }
+
+  async configuration() {
+    return this.cached('tmdb:configuration', cacheTtls.genres, () =>
+      this.request<TmdbConfiguration>('/configuration'),
+    );
+  }
+
+  async genres() {
+    const [movieGenres, seriesGenres] = await Promise.all([
+      this.cached('tmdb:genres:movie', cacheTtls.genres, () =>
+        this.request<{ genres: TmdbGenre[] }>('/genre/movie/list'),
+      ),
+      this.cached('tmdb:genres:series', cacheTtls.genres, () =>
+        this.request<{ genres: TmdbGenre[] }>('/genre/tv/list'),
+      ),
+    ]);
+    this.genreMap = new Map([...movieGenres.genres, ...seriesGenres.genres].map((genre) => [genre.id, genre.name]));
+    return [...new Set([...movieGenres.genres, ...seriesGenres.genres].map((genre) => genre.name))].sort();
+  }
+
+  async trending() {
+    const response = await this.cached('tmdb:trending:all:week', cacheTtls.trending, () =>
+      this.request<TmdbListResponse<TmdbSearchResult>>('/trending/all/week'),
+    );
+    return response.results
+      .map((item) => this.normalizeSearchResult(item))
+      .filter((item): item is MediaSummary => item !== null)
+      .slice(0, 20);
+  }
+
+  async list(mediaType: MediaType, list: 'popular' | 'top-rated' | 'now-playing' | 'upcoming' | 'airing-today') {
+    const endpoint = this.listEndpoint(mediaType, list);
+    const cacheKey = `tmdb:list:${mediaType}:${list}`;
+    const response = await this.cached(cacheKey, cacheTtls.trending, () =>
+      this.request<TmdbListResponse<TmdbMovie | TmdbSeries>>(endpoint),
+    );
+    return response.results.map((item) => this.normalizeSummary(item, mediaType)).slice(0, 20);
+  }
+
+  async search(query: string) {
+    if (!query.trim()) return this.trending();
+    const response = await this.cached(`tmdb:search:${query.toLowerCase()}`, cacheTtls.search, () =>
+      this.request<TmdbListResponse<TmdbSearchResult>>('/search/multi', {
+        query,
+        include_adult: 'false',
+      }),
+    );
+    return response.results
+      .map((item) => this.normalizeSearchResult(item))
+      .filter((item): item is MediaSummary => item !== null)
+      .slice(0, 20);
+  }
+
+  async detail(mediaType: MediaType, tmdbId: number) {
+    const namespace = mediaType === 'movie' ? 'movie' : 'tv';
+    const response = await this.cached(
+      `tmdb:detail:${mediaType}:${tmdbId}`,
+      cacheTtls.details,
+      () =>
+        this.request<TmdbMovie | TmdbSeries>(`/${namespace}/${tmdbId}`, {
+          append_to_response: 'credits,videos,images,similar,recommendations',
+          include_image_language: 'en,null',
+        }),
+    );
+    return this.normalizeDetail(response, mediaType);
+  }
+
+  private listEndpoint(
+    mediaType: MediaType,
+    list: 'popular' | 'top-rated' | 'now-playing' | 'upcoming' | 'airing-today',
+  ) {
+    if (mediaType === 'movie') {
+      if (list === 'top-rated') return '/movie/top_rated';
+      if (list === 'now-playing') return '/movie/now_playing';
+      if (list === 'upcoming') return '/movie/upcoming';
+      return '/movie/popular';
+    }
+    if (list === 'top-rated') return '/tv/top_rated';
+    if (list === 'airing-today') return '/tv/airing_today';
+    return '/tv/popular';
+  }
+
+  private async cached<T>(key: string, ttlSeconds: number, load: () => Promise<T>) {
+    const cached = await this.redis.getJson<T>(key);
+    if (cached) return cached;
+    const value = await load();
+    await this.redis.setJson(key, value, ttlSeconds);
+    return value;
+  }
+
+  private async request<T>(path: string, query: Record<string, string | number | boolean> = {}) {
+    const token = this.config.get('TMDB_READ_ACCESS_TOKEN', { infer: true });
+    const apiKey = this.config.get('TMDB_API_KEY', { infer: true });
+    if (!token && !apiKey) {
+      throw new ServiceUnavailableException('TMDB credentials are not configured.');
+    }
+
+    const url = new URL(`${this.apiBaseUrl}${path}`);
+    url.searchParams.set('language', 'en-US');
+    for (const [key, value] of Object.entries(query)) {
+      url.searchParams.set(key, String(value));
+    }
+    if (!token && apiKey) {
+      url.searchParams.set('api_key', apiKey);
+    }
+
+    const response = await fetch(url, {
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+          }
+        : {
+            Accept: 'application/json',
+          },
+    });
+
+    if (!response.ok) {
+      throw new ServiceUnavailableException(`TMDB request failed with ${response.status}.`);
+    }
+    return (await response.json()) as T;
+  }
+
+  private normalizeSearchResult(item: TmdbSearchResult) {
+    if (item.media_type === 'movie') return this.normalizeSummary(item, 'movie');
+    if (item.media_type === 'tv') return this.normalizeSummary(item, 'series');
+    return null;
+  }
+
+  private normalizeSummary(item: TmdbMovie | TmdbSeries, mediaType: MediaType): MediaSummary {
+    const isMovie = mediaType === 'movie';
+    const title = isMovie
+      ? ((item as TmdbMovie).title ?? (item as TmdbMovie).original_title ?? 'Untitled Movie')
+      : ((item as TmdbSeries).name ?? (item as TmdbSeries).original_name ?? 'Untitled Series');
+    const releaseDate = isMovie
+      ? ((item as TmdbMovie).release_date ?? null)
+      : ((item as TmdbSeries).first_air_date ?? null);
+    const genres =
+      item.genres?.map((genre) => genre.name) ??
+      item.genre_ids?.map((id) => this.genreMap.get(id)).filter((genre): genre is string => Boolean(genre)) ??
+      [];
+    const tmdbRating = Number((item.vote_average ?? 0).toFixed(1));
+
+    return {
+      tmdbId: item.id,
+      mediaType,
+      title,
+      overview: item.overview ?? '',
+      posterUrl: this.imageUrl(item.poster_path, 'w500'),
+      backdropUrl: this.imageUrl(item.backdrop_path, 'original'),
+      releaseDate,
+      genres,
+      tmdbRating,
+      buzzScore: this.toBuzzScore(tmdbRating),
+      ...(item.tagline ? { tagline: item.tagline } : {}),
+    };
+  }
+
+  private normalizeDetail(item: TmdbMovie | TmdbSeries, mediaType: MediaType): MediaDetail {
+    const summary = this.normalizeSummary(item, mediaType);
+    const isMovie = mediaType === 'movie';
+    const video = this.pickTrailer(item.videos?.results ?? []);
+    const similar = item.similar?.results?.map((entry) => this.normalizeSummary(entry, mediaType)).slice(0, 8) ?? [];
+    const recommendations =
+      item.recommendations?.results
+        ?.map((entry, index) => ({
+          media: this.normalizeSummary(entry, mediaType),
+          score: Math.max(60, 96 - index * 3),
+          reason: `Because TMDB recommends it for ${summary.title}.`,
+        }))
+        .slice(0, 8) ?? [];
+
+    const runtime = (item as TmdbMovie).runtime;
+    const seasons = (item as TmdbSeries).number_of_seasons;
+
+    return {
+      ...summary,
+      ...(isMovie && runtime != null ? { runtimeMinutes: runtime } : {}),
+      ...(!isMovie && seasons != null ? { seasons } : {}),
+      status: item.status ?? 'Unknown',
+      trailerUrl: video ? `https://www.youtube.com/watch?v=${video.key}` : null,
+      cast: (item.credits?.cast ?? []).slice(0, 12).map((member) => this.normalizeCast(member)),
+      similar,
+      recommendations,
+    };
+  }
+
+  private normalizeCast(member: TmdbCastMember) {
+    return {
+      id: member.id,
+      name: member.name,
+      character: member.character ?? '',
+      avatarUrl: this.imageUrl(member.profile_path, 'w185'),
+    };
+  }
+
+  private pickTrailer(videos: TmdbVideo[]) {
+    return (
+      videos.find((video) => video.site === 'YouTube' && video.type === 'Trailer' && video.official) ??
+      videos.find((video) => video.site === 'YouTube' && video.type === 'Trailer') ??
+      videos.find((video) => video.site === 'YouTube')
+    );
+  }
+
+  private imageUrl(path: string | null | undefined, size: 'w185' | 'w500' | 'original') {
+    return path ? `${this.imageBaseUrl}/${size}${path}` : null;
+  }
+
+  private toBuzzScore(tmdbRating: number) {
+    return Number(Math.min(10, Math.max(0, tmdbRating + 0.4)).toFixed(1));
+  }
+}
