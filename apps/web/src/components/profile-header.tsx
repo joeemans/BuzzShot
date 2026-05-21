@@ -19,7 +19,13 @@ export function ProfileHeader({ profile }: { profile: Profile }) {
             {profile.bio ? <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{profile.bio}</p> : null}
           </div>
         </div>
-        <FollowButton />
+        {profile.viewer?.canEdit ? null : (
+          <FollowButton
+            userId={profile.id}
+            username={profile.username}
+            initialFollowing={profile.viewer?.isFollowing ?? false}
+          />
+        )}
       </div>
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {Object.entries(profile.stats).map(([label, value]) => (

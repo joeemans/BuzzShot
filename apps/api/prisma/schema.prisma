@@ -49,6 +49,7 @@ model User {
   lists          CustomList[]
   listLikes      CustomListLike[]
   listComments   CustomListComment[]
+  listFollows    CustomListFollow[]
   following      Follow[] @relation("following")
   followers      Follow[] @relation("followers")
   activities     ActivityEvent[] @relation("actor")
@@ -246,6 +247,7 @@ model CustomList {
   items       CustomListItem[]
   likes       CustomListLike[]
   comments    CustomListComment[]
+  followers   CustomListFollow[]
   activities  ActivityEvent[]
 
   @@index([ownerId, updatedAt])
@@ -287,6 +289,20 @@ model CustomListComment {
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   list      CustomList @relation(fields: [listId], references: [id], onDelete: Cascade)
+}
+
+model CustomListFollow {
+  id        String     @id @default(cuid())
+  userId    String
+  listId    String
+  createdAt DateTime   @default(now())
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  list      CustomList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listId])
+  @@index([userId, createdAt])
+  @@index([listId, createdAt])
 }
 
 model Follow {
@@ -331,6 +347,9 @@ model Notification {
   createdAt DateTime  @default(now())
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
 }
 
 model RecommendationSnapshot {

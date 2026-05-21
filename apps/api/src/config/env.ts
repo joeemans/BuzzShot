@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-const envSchema = z.object({
+const envSchema = z
+  .object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().positive().default(4000),
   API_URL: z.string().url().default('http://localhost:4000'),
@@ -19,7 +20,16 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_CALLBACK_URL: z.string().optional(),
-});
+  })
+  .superRefine((env, context) => {
+    if (env.NODE_ENV === 'production' && env.JWT_ACCESS_SECRET === 'development-access-secret-change-me') {
+      context.addIssue({
+        code: 'custom',
+        path: ['JWT_ACCESS_SECRET'],
+        message: 'Set a production JWT_ACCESS_SECRET.',
+      });
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

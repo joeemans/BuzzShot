@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { DatabaseModule } from '../database/database.module.js';
 import { MediaModule } from '../media/media.module.js';
-import { ReviewsController } from './reviews.controller.js';
+import { NotificationsController } from './notifications.controller.js';
 
 @Module({
   imports: [AuthModule, DatabaseModule, MediaModule],
-  controllers: [ReviewsController],
+  controllers: [NotificationsController],
 })
-export class ReviewsModule {}
+export class NotificationsModule {}

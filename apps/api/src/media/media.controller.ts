@@ -1,10 +1,18 @@
-import { Controller, Get, Inject, NotFoundException, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Headers, Inject, NotFoundException, Param, ParseIntPipe, Req } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type { Request } from 'express';
+import { AuthService } from '../auth/auth.service.js';
 import { envelope } from '../common/http.js';
+import type { Env } from '../config/env.js';
 import { MediaService } from './media.service.js';
 
 @Controller('media')
 export class MediaController {
-  constructor(@Inject(MediaService) private readonly media: MediaService) {}
+  constructor(
+    @Inject(MediaService) private readonly media: MediaService,
+    @Inject(AuthService) private readonly auth: AuthService,
+    @Inject(ConfigService) private readonly config: ConfigService<Env, true>,
+  ) {}
 
   @Get('trending')
   async trending() {
@@ -57,12 +65,25 @@ export class MediaController {
   }
 
   @Get(':mediaType/:tmdbId')
-  async detail(@Param('mediaType') mediaType: 'movie' | 'series', @Param('tmdbId', ParseIntPipe) tmdbId: number) {
+  async detail(
+    @Param('mediaType') mediaType: 'movie' | 'series',
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+    @Headers('authorization') authorization: string | undefined,
+    @Req() request: Request,
+  ) {
     if (mediaType !== 'movie' && mediaType !== 'series') {
       throw new NotFoundException('Unsupported media type.');
     }
-    const detail = await this.media.detail(mediaType, tmdbId);
+    const detail = await this.media.detail(mediaType, tmdbId, (await this.viewerId(authorization, request)) ?? undefined);
     if (!detail) throw new NotFoundException('Media not found.');
     return envelope(detail);
+  }
+
+  private viewerId(authorization: string | undefined, request: Request) {
+    const cookies = request.cookies as Record<string, string | undefined> | undefined;
+    return this.auth.resolveUserId({
+      authorization,
+      refreshToken: cookies?.[this.config.get('REFRESH_TOKEN_COOKIE_NAME', { infer: true })],
+    });
   }
 }

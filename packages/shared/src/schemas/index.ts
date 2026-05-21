@@ -49,10 +49,47 @@ export const reviewInputSchema = z.object({
   hasSpoilers: z.boolean(),
 });
 
+export const reviewCommentInputSchema = z.object({
+  body: z.string().min(1).max(1000),
+});
+
 export const customListInputSchema = z.object({
   title: z.string().min(3).max(120),
   description: z.string().max(500),
   isPrivate: z.boolean(),
+});
+
+export const customListItemInputSchema = z.object({
+  tmdbId: z.number().int().positive(),
+  mediaType: mediaTypeSchema,
+  position: z.number().int().min(0).optional(),
+});
+
+export const customListCommentInputSchema = z.object({
+  body: z.string().min(1).max(1000),
+});
+
+export const followInputSchema = z.object({
+  userId: z.string().min(1).optional(),
+  username: usernameSchema.optional(),
+});
+
+export const notificationReadSchema = z.object({
+  ids: z.array(z.string().min(1)).max(100).optional(),
+});
+
+export const passwordResetRequestSchema = z.object({
+  email: z.string().email(),
+});
+
+export const passwordResetConfirmSchema = z.object({
+  token: z.string().min(24),
+  password: passwordSchema,
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: passwordSchema,
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
@@ -60,4 +97,12 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 export type RatingInput = z.infer<typeof ratingInputSchema>;
 export type ReviewInput = z.infer<typeof reviewInputSchema>;
+export type ReviewCommentInput = z.infer<typeof reviewCommentInputSchema>;
 export type CustomListInput = z.infer<typeof customListInputSchema>;
+export type CustomListItemInput = z.infer<typeof customListItemInputSchema>;
+export type CustomListCommentInput = z.infer<typeof customListCommentInputSchema>;
+export type FollowInput = z.infer<typeof followInputSchema>;
+export type NotificationReadInput = z.infer<typeof notificationReadSchema>;
+export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
+export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

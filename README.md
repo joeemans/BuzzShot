@@ -51,6 +51,13 @@ For Google auth, set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CAL
 
 Auth data is persisted in PostgreSQL through Prisma. Refresh tokens are stored only as hashes in the database and the raw token stays in the HttpOnly cookie.
 
+## Implemented V1 Surfaces
+
+- Auth: register, login, Google OAuth, refresh rotation, logout, logout all, current user, password reset token generation, password reset confirmation, and password change.
+- Media: TMDB discovery/detail routes with Redis and PostgreSQL cache fallback, BuzzShot rating/review aggregates, and viewer media state.
+- Social: ratings, reviews, review likes/comments, watchlist, watched, favorites, custom lists, list likes/comments/follows, user follows, notifications, activity feed, grouped search, and deterministic `/for-you` recommendations.
+- Web: persisted detail-page actions, per-title list add/remove controls, searchable list item management, review submission, collections, follow buttons, notification tab, feed, list creation/item additions, and profile/account/security settings.
+
 ## Quality Gates
 
 ```bash

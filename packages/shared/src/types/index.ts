@@ -22,6 +22,8 @@ export type MediaDetail = MediaSummary & {
   cast: CastMember[];
   similar: MediaSummary[];
   recommendations: Recommendation[];
+  buzz?: MediaBuzz;
+  viewer?: MediaViewerState;
 };
 
 export type CastMember = {
@@ -49,6 +51,10 @@ export type Profile = UserSummary & {
     following: number;
     lists: number;
   };
+  viewer?: {
+    isFollowing: boolean;
+    canEdit: boolean;
+  };
 };
 
 export type Rating = {
@@ -58,6 +64,29 @@ export type Rating = {
   mediaType: MediaType;
   value: number;
   createdAt: string;
+  updatedAt?: string;
+};
+
+export type MediaBuzz = {
+  averageRating: number | null;
+  ratingsCount: number;
+  reviewsCount: number;
+};
+
+export type MediaViewerState = {
+  rating: number | null;
+  inWatchlist: boolean;
+  watched: boolean;
+  favorite: boolean;
+  lists?: MediaListMembership[];
+};
+
+export type MediaListMembership = {
+  id: string;
+  title: string;
+  isPrivate: boolean;
+  containsMedia: boolean;
+  itemId: string | null;
 };
 
 export type Review = {
@@ -71,6 +100,16 @@ export type Review = {
   likesCount: number;
   commentsCount: number;
   createdAt: string;
+  updatedAt?: string;
+  likedByViewer?: boolean;
+};
+
+export type ReviewComment = {
+  id: string;
+  user: UserSummary;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type CustomList = {
@@ -80,8 +119,28 @@ export type CustomList = {
   description: string;
   isPrivate: boolean;
   items: MediaSummary[];
+  listItems?: CustomListItem[];
   likesCount: number;
   commentsCount: number;
+  followersCount?: number;
+  updatedAt: string;
+  likedByViewer?: boolean;
+  followedByViewer?: boolean;
+  viewerCanEdit?: boolean;
+};
+
+export type CustomListItem = {
+  id: string;
+  media: MediaSummary;
+  position: number;
+  createdAt: string;
+};
+
+export type CustomListComment = {
+  id: string;
+  user: UserSummary;
+  body: string;
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -102,6 +161,23 @@ export type Recommendation = {
   reason: string;
 };
 
+export type GroupedSearchResults = {
+  media: MediaSummary[];
+  users: UserSummary[];
+  reviews: Review[];
+  lists: CustomList[];
+};
+
+export type NotificationItem = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  href: string;
+  readAt: string | null;
+  createdAt: string;
+};
+
 export type AuthUser = UserSummary & {
   email: string;
 };
@@ -116,3 +192,5 @@ export type Paginated<T> = {
   page: number;
   pageSize: number;
 };
+
+export type CollectionKind = 'watchlist' | 'watched' | 'favorites';

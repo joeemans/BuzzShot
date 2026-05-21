@@ -44,7 +44,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: production
+      NODE_ENV: ${NODE_ENV:-development}
       API_PORT: 4000
       API_URL: http://localhost:${API_PORT:-4000}
       WEB_URL: http://localhost:${WEB_PORT:-3000}

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Clapperboard, Home, ListVideo, Menu, Sparkles, Tv, UserRound } from 'lucide-react';
+import { Bell, Clapperboard, Home, ListVideo, Menu, Sparkles, Tv, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { AuthUser } from '@buzzshot/shared';
 import { ButtonLink } from './button';
@@ -12,6 +12,7 @@ const nav = [
   { href: '/movies', label: 'Movies', icon: Clapperboard },
   { href: '/series', label: 'Series', icon: Tv },
   { href: '/feed', label: 'Feed', icon: ListVideo },
+  { href: '/notifications', label: 'Alerts', icon: Bell },
   { href: '/for-you', label: 'For You', icon: UserRound },
 ];
 
@@ -79,7 +80,7 @@ export function Navbar({ user }: { user: AuthUser | null }) {
 export function MobileNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/[0.08] bg-background/[0.92] px-2 py-2 backdrop-blur-xl md:hidden">
-      <div className="grid grid-cols-5 gap-1">
+      <div className="grid grid-cols-6 gap-1">
         {nav.map((item) => (
           <Link
             key={item.href}

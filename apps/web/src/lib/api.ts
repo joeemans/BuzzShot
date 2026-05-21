@@ -1,21 +1,25 @@
 import type {
   ActivityEvent,
   ApiEnvelope,
+  CollectionKind,
   CustomList,
+  CustomListComment,
+  GroupedSearchResults,
   MediaDetail,
   MediaSummary,
+  NotificationItem,
+  Paginated,
   Profile,
   Recommendation,
   Review,
 } from '@buzzshot/shared';
+import { cookies } from 'next/headers';
 import {
-  activity,
   getMediaByType,
   getMediaDetail,
   lists,
   mediaItems,
   profiles,
-  recommendations,
   reviews,
   searchAll,
 } from './demo-data';
@@ -25,14 +29,16 @@ const API_URL =
   typeof window === 'undefined' ? (process.env.INTERNAL_API_URL ?? PUBLIC_API_URL) : PUBLIC_API_URL;
 
 type ApiRequestInit = RequestInit & {
+  auth?: boolean;
   next?: {
     revalidate?: number | false;
   };
 };
 
 async function readApi<T>(path: string, fallback: T, init?: ApiRequestInit): Promise<T> {
-  const { headers, next, ...requestInit } = init ?? {};
+  const { auth, headers, next, ...requestInit } = init ?? {};
   const cacheInit = requestInit.cache === 'no-store' ? {} : { next: next ?? { revalidate: 120 } };
+  const cookieHeader = auth && typeof window === 'undefined' ? (await cookies()).toString() : '';
 
   try {
     const response = await fetch(`${API_URL}${path}`, {
@@ -40,6 +46,7 @@ async function readApi<T>(path: string, fallback: T, init?: ApiRequestInit): Pro
       ...cacheInit,
       headers: {
         Accept: 'application/json',
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
         ...headers,
       },
     });
@@ -65,11 +72,16 @@ export function getDetail(mediaType: 'movie' | 'series', tmdbId: number) {
   return readApi<MediaDetail | null>(
     `/media/${mediaType}/${tmdbId}`,
     getMediaDetail(mediaType, tmdbId),
+    { auth: true, cache: 'no-store' },
   );
 }
 
 export function getSearchResults(query: string) {
-  return readApi<MediaSummary[]>(`/search?q=${encodeURIComponent(query)}`, searchAll(query));
+  return readApi<GroupedSearchResults>(
+    `/search?q=${encodeURIComponent(query)}`,
+    { media: searchAll(query), users: [], reviews: [], lists: [] },
+    { cache: 'no-store' },
+  );
 }
 
 export function getReviews() {
@@ -91,21 +103,42 @@ export function getList(listId: string) {
   return readApi<CustomList | null>(
     `/lists/${listId}`,
     lists.find((list) => list.id === listId) ?? null,
+    { auth: true, cache: 'no-store' },
   );
+}
+
+export function getListComments(listId: string) {
+  return readApi<CustomListComment[]>(`/lists/${listId}/comments`, [], { auth: true, cache: 'no-store' });
 }
 
 export function getProfile(username: string) {
   return readApi<Profile | null>(
     `/profiles/${username}`,
     profiles.find((profile) => profile.username === username) ?? null,
-    { cache: 'no-store' },
+    { auth: true, cache: 'no-store' },
   );
 }
 
 export function getFeed() {
-  return readApi<ActivityEvent[]>('/feed', activity);
+  return readApi<Paginated<ActivityEvent>>(
+    '/feed',
+    { items: [], total: 0, page: 1, pageSize: 20 },
+    { auth: true, cache: 'no-store' },
+  );
 }
 
 export function getRecommendations() {
-  return readApi<Recommendation[]>('/recommendations/for-you', recommendations);
+  return readApi<Recommendation[]>('/recommendations/for-you', [], { auth: true, cache: 'no-store' });
+}
+
+export function getCollection(kind: CollectionKind) {
+  return readApi<MediaSummary[]>(`/${kind}`, [], { auth: true, cache: 'no-store' });
+}
+
+export function getNotifications() {
+  return readApi<Paginated<NotificationItem>>(
+    '/notifications',
+    { items: [], total: 0, page: 1, pageSize: 20 },
+    { auth: true, cache: 'no-store' },
+  );
 }

@@ -5,6 +5,7 @@ const protectedRoutes = [
   '/feed',
   '/for-you',
   '/lists/new',
+  '/notifications',
   '/settings',
   '/watched',
   '/watchlist',
@@ -27,5 +28,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/favorites/:path*', '/feed/:path*', '/for-you/:path*', '/lists/new', '/settings/:path*', '/watched/:path*', '/watchlist/:path*'],
+  matcher: ['/favorites/:path*', '/feed/:path*', '/for-you/:path*', '/lists/new', '/notifications/:path*', '/settings/:path*', '/watched/:path*', '/watchlist/:path*'],
 };

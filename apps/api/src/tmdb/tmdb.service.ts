@@ -1,5 +1,7 @@
 import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { MediaType as PrismaMediaType, Prisma } from '@prisma/client';
+import { PrismaService } from '../database/prisma.service.js';
 import { RedisService } from '../database/redis.service.js';
 import type { Env } from '../config/env.js';
 import type {
@@ -55,6 +57,8 @@ export class TmdbService {
   constructor(
     @Inject(ConfigService)
     private readonly config: ConfigService<Env, true>,
+    @Inject(PrismaService)
+    private readonly prisma: PrismaService,
     @Inject(RedisService)
     private readonly redis: RedisService,
   ) {
@@ -63,18 +67,27 @@ export class TmdbService {
   }
 
   async configuration() {
-    return this.cached('tmdb:configuration', cacheTtls.genres, () =>
-      this.request<TmdbConfiguration>('/configuration'),
+    return this.cached(
+      'tmdb:configuration',
+      cacheTtls.genres,
+      () => this.request<TmdbConfiguration>('/configuration'),
+      this.cacheRecord(0, PrismaMediaType.MOVIE, 'configuration'),
     );
   }
 
   async genres() {
     const [movieGenres, seriesGenres] = await Promise.all([
-      this.cached('tmdb:genres:movie', cacheTtls.genres, () =>
-        this.request<{ genres: TmdbGenre[] }>('/genre/movie/list'),
+      this.cached(
+        'tmdb:genres:movie',
+        cacheTtls.genres,
+        () => this.request<{ genres: TmdbGenre[] }>('/genre/movie/list'),
+        this.cacheRecord(0, PrismaMediaType.MOVIE, 'genres:movie'),
       ),
-      this.cached('tmdb:genres:series', cacheTtls.genres, () =>
-        this.request<{ genres: TmdbGenre[] }>('/genre/tv/list'),
+      this.cached(
+        'tmdb:genres:series',
+        cacheTtls.genres,
+        () => this.request<{ genres: TmdbGenre[] }>('/genre/tv/list'),
+        this.cacheRecord(0, PrismaMediaType.SERIES, 'genres:series'),
       ),
     ]);
     this.genreMap = new Map([...movieGenres.genres, ...seriesGenres.genres].map((genre) => [genre.id, genre.name]));
@@ -82,8 +95,11 @@ export class TmdbService {
   }
 
   async trending() {
-    const response = await this.cached('tmdb:trending:all:week', cacheTtls.trending, () =>
-      this.request<TmdbListResponse<TmdbSearchResult>>('/trending/all/week'),
+    const response = await this.cached(
+      'tmdb:trending:all:week',
+      cacheTtls.trending,
+      () => this.request<TmdbListResponse<TmdbSearchResult>>('/trending/all/week'),
+      this.cacheRecord(0, PrismaMediaType.MOVIE, 'trending:all:week'),
     );
     return response.results
       .map((item) => this.normalizeSearchResult(item))
@@ -94,19 +110,27 @@ export class TmdbService {
   async list(mediaType: MediaType, list: 'popular' | 'top-rated' | 'now-playing' | 'upcoming' | 'airing-today') {
     const endpoint = this.listEndpoint(mediaType, list);
     const cacheKey = `tmdb:list:${mediaType}:${list}`;
-    const response = await this.cached(cacheKey, cacheTtls.trending, () =>
-      this.request<TmdbListResponse<TmdbMovie | TmdbSeries>>(endpoint),
+    const response = await this.cached(
+      cacheKey,
+      cacheTtls.trending,
+      () => this.request<TmdbListResponse<TmdbMovie | TmdbSeries>>(endpoint),
+      this.cacheRecord(0, this.prismaMediaType(mediaType), `list:${mediaType}:${list}`),
     );
     return response.results.map((item) => this.normalizeSummary(item, mediaType)).slice(0, 20);
   }
 
   async search(query: string) {
     if (!query.trim()) return this.trending();
-    const response = await this.cached(`tmdb:search:${query.toLowerCase()}`, cacheTtls.search, () =>
-      this.request<TmdbListResponse<TmdbSearchResult>>('/search/multi', {
-        query,
-        include_adult: 'false',
-      }),
+    const normalized = query.trim().toLowerCase();
+    const response = await this.cached(
+      `tmdb:search:${normalized}`,
+      cacheTtls.search,
+      () =>
+        this.request<TmdbListResponse<TmdbSearchResult>>('/search/multi', {
+          query,
+          include_adult: 'false',
+        }),
+      this.cacheRecord(0, PrismaMediaType.MOVIE, `search:${normalized}`),
     );
     return response.results
       .map((item) => this.normalizeSearchResult(item))
@@ -124,6 +148,7 @@ export class TmdbService {
           append_to_response: 'credits,videos,images,similar,recommendations',
           include_image_language: 'en,null',
         }),
+      this.cacheRecord(tmdbId, this.prismaMediaType(mediaType), 'details'),
     );
     return this.normalizeDetail(response, mediaType);
   }
@@ -143,12 +168,63 @@ export class TmdbService {
     return '/tv/popular';
   }
 
-  private async cached<T>(key: string, ttlSeconds: number, load: () => Promise<T>) {
+  private async cached<T>(
+    key: string,
+    ttlSeconds: number,
+    load: () => Promise<T>,
+    recordKey?: { tmdbId: number; mediaType: PrismaMediaType; scope: string },
+  ) {
     const cached = await this.redis.getJson<T>(key);
     if (cached) return cached;
-    const value = await load();
-    await this.redis.setJson(key, value, ttlSeconds);
-    return value;
+
+    const dbCached = recordKey
+      ? await this.prisma.mediaCache.findUnique({
+          where: {
+            tmdbId_mediaType_scope: recordKey,
+          },
+        })
+      : null;
+
+    if (dbCached && dbCached.staleAt > new Date()) {
+      const payload = dbCached.payload as T;
+      await this.redis.setJson(key, payload, ttlSeconds);
+      return payload;
+    }
+
+    try {
+      const value = await load();
+      await this.redis.setJson(key, value, ttlSeconds);
+      if (recordKey) {
+        await this.prisma.mediaCache.upsert({
+          where: { tmdbId_mediaType_scope: recordKey },
+          update: {
+            payload: value as Prisma.InputJsonValue,
+            staleAt: new Date(Date.now() + ttlSeconds * 1000),
+          },
+          create: {
+            ...recordKey,
+            payload: value as Prisma.InputJsonValue,
+            staleAt: new Date(Date.now() + ttlSeconds * 1000),
+          },
+        });
+      }
+      return value;
+    } catch (error) {
+      if (dbCached) {
+        const payload = dbCached.payload as T;
+        await this.redis.setJson(key, payload, Math.min(ttlSeconds, 60 * 15));
+        return payload;
+      }
+      throw error;
+    }
+  }
+
+  private cacheRecord(tmdbId: number, mediaType: PrismaMediaType, scope: string) {
+    return { tmdbId, mediaType, scope };
+  }
+
+  private prismaMediaType(mediaType: MediaType) {
+    return mediaType === 'movie' ? PrismaMediaType.MOVIE : PrismaMediaType.SERIES;
   }
 
   private async request<T>(path: string, query: Record<string, string | number | boolean> = {}) {

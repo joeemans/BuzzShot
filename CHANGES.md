@@ -20,3 +20,10 @@ This file documents intentional implementation choices and deviations from `.age
 
 - Replaced demo in-memory auth with Prisma-backed email/password auth, Google OAuth account linking, hashed refresh-token persistence, rotation, and revocation.
 - Login and register pages now submit to the API, keep access tokens in client memory, rely on HttpOnly refresh cookies, and gate private web routes when no refresh cookie is present.
+- Added explicit API auth guards, validated DTOs, Prisma-backed ratings, reviews, review likes/comments, watchlist, watched, favorites, follows, feed, custom lists, grouped search, and recommendation snapshots.
+- TMDB cache now checks Redis first, then persisted `MediaCache`, then TMDB, and writes fresh responses back to both caches.
+- Password reset uses a development-safe server log token instead of an email provider; wiring SMTP or a transactional email service remains a deployment choice.
+- Account settings expose email and username as read-only in v1 until verification-backed edit flows are added.
+- Local Docker Compose keeps `NODE_ENV` configurable and defaults it to development so local startup is not blocked by production secret validation.
+- Custom lists now support follows, list-follower notifications for new additions, list likes/comments in the UI, searchable add/remove flows, and per-title add/remove controls on media detail pages.
+- Added a protected notifications page that combines stored notifications with activity from followed people and followed lists.

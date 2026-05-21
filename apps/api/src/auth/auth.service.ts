@@ -1,7 +1,10 @@
 import {
+  BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -48,6 +51,7 @@ type GoogleUserInfo = {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly googleTokenEndpoint = 'https://oauth2.googleapis.com/token';
   private readonly googleUserInfoEndpoint = 'https://openidconnect.googleapis.com/v1/userinfo';
 
@@ -164,18 +168,14 @@ export class AuthService {
   }
 
   async logoutAll(input: { authorization: string | undefined; refreshToken: string | undefined }) {
-    const userId =
-      (await this.userIdFromAuthorization(input.authorization)) ??
-      (await this.userIdFromRefreshToken(input.refreshToken));
+    const userId = await this.resolveUserId(input);
 
     if (!userId) return;
     await this.revokeAllForUser(userId);
   }
 
   async currentUser(input: { authorization: string | undefined; refreshToken: string | undefined }): Promise<AuthUser> {
-    const userId =
-      (await this.userIdFromAuthorization(input.authorization)) ??
-      (await this.userIdFromRefreshToken(input.refreshToken));
+    const userId = await this.resolveUserId(input);
 
     if (!userId) {
       throw new UnauthorizedException('Authentication required.');
@@ -191,6 +191,77 @@ export class AuthService {
     }
 
     return this.safeUser(user);
+  }
+
+  async resolveUserId(input: { authorization: string | undefined; refreshToken: string | undefined }) {
+    return (await this.userIdFromAuthorization(input.authorization)) ?? (await this.userIdFromRefreshToken(input.refreshToken));
+  }
+
+  async requestPasswordReset(emailInput: string) {
+    const email = this.normalizeEmail(emailInput);
+    const user = await this.prisma.user.findUnique({ where: { email }, select: { id: true, email: true } });
+
+    if (!user) return;
+
+    const rawToken = this.generateRefreshToken();
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: this.hashToken(rawToken),
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60),
+      },
+    });
+
+    this.logger.log(`Password reset token for ${user.email}: ${rawToken}`);
+  }
+
+  async confirmPasswordReset(input: { token: string; password: string }) {
+    const tokenHash = this.hashToken(input.token);
+    const reset = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!reset || reset.usedAt || reset.expiresAt <= new Date()) {
+      throw new BadRequestException('Password reset token is invalid or expired.');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: reset.userId },
+        data: { passwordHash: await argon2.hash(input.password) },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: reset.id },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId: reset.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+  }
+
+  async changePassword(userId: string, input: { currentPassword: string; newPassword: string }) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.passwordHash) {
+      throw new ForbiddenException('Password changes are only available for password accounts.');
+    }
+
+    if (!(await argon2.verify(user.passwordHash, input.currentPassword))) {
+      throw new UnauthorizedException('Current password is incorrect.');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash: await argon2.hash(input.newPassword) },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
   }
 
   createOAuthState() {

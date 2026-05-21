@@ -9,6 +9,7 @@ import { FollowsModule } from './follows/follows.module.js';
 import { HealthModule } from './health/health.module.js';
 import { ListsModule } from './lists/lists.module.js';
 import { MediaModule } from './media/media.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { ProfilesModule } from './profiles/profiles.module.js';
 import { RatingsModule } from './ratings/ratings.module.js';
 import { RecommendationsModule } from './recommendations/recommendations.module.js';
@@ -43,6 +44,7 @@ import { validateEnv } from './config/env.js';
     ListsModule,
     FollowsModule,
     FeedModule,
+    NotificationsModule,
     RecommendationsModule,
     HealthModule,
   ],

@@ -19,22 +19,30 @@ import {
 } from '@/components/action-buttons';
 import { AuthForm } from '@/components/auth-form';
 import { ActivityFeedItem } from '@/components/activity-feed-item';
-import { Button, ButtonLink } from '@/components/button';
+import { ButtonLink } from '@/components/button';
 import { ListCard } from '@/components/list-card';
+import { ListEngagement, ListItemManager, MediaListControls } from '@/components/list-actions';
 import { MediaGrid } from '@/components/media-grid';
+import { NewListForm } from '@/components/new-list-form';
+import { MarkNotificationsReadButton } from '@/components/notification-actions';
 import { PaginationControls } from '@/components/pagination-controls';
 import { ProfileHeader } from '@/components/profile-header';
 import { RatingStars } from '@/components/rating-stars';
 import { ReviewCard } from '@/components/review-card';
 import { ReviewForm } from '@/components/review-form';
+import { ReviewLikeButton } from '@/components/review-actions';
 import { SearchBar } from '@/components/search-bar';
+import { AccountSettingsPanel, ProfileSettingsForm, SecuritySettingsForm } from '@/components/settings-forms';
 import { EmptyState, ErrorState } from '@/components/states';
 import {
   getCatalog,
+  getCollection,
   getDetail,
   getFeed,
   getList,
+  getListComments,
   getLists,
+  getNotifications,
   getProfile,
   getRecommendations,
   getReview,
@@ -42,6 +50,7 @@ import {
   getSearchResults,
   getTrending,
 } from '@/lib/api';
+import { getCurrentUser } from '@/lib/auth-server';
 import { formatDate, minutesToRuntime } from '@/lib/utils';
 
 function SectionHeader({
@@ -281,7 +290,45 @@ export async function SearchPage({ query }: { query: string }) {
       <div className="mb-8 max-w-2xl">
         <SearchBar defaultValue={query} />
       </div>
-      <MediaGrid items={results} />
+      <div className="space-y-10">
+        <div>
+          <SectionHeader title="Media" />
+          <MediaGrid items={results.media} />
+        </div>
+        {results.users.length > 0 ? (
+          <div>
+            <SectionHeader title="People" />
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {results.users.map((user) => (
+                <Link key={user.id} href={`/profile/${user.username}`} className="rounded-md border border-border bg-white/6 p-4 hover:border-primary/50">
+                  <p className="font-semibold">{user.displayName}</p>
+                  <p className="text-sm text-muted">@{user.username}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {results.reviews.length > 0 ? (
+          <div>
+            <SectionHeader title="Reviews" />
+            <div className="grid gap-4 lg:grid-cols-2">
+              {results.reviews.map((review) => (
+                <ReviewCard key={review.id} review={review} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+        {results.lists.length > 0 ? (
+          <div>
+            <SectionHeader title="Lists" />
+            <div className="grid gap-4 lg:grid-cols-2">
+              {results.lists.map((list) => (
+                <ListCard key={list.id} list={list} />
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }
@@ -340,9 +387,21 @@ export async function DetailPage({ mediaType, tmdbId }: { mediaType: 'movie' | '
               ))}
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
-              <WatchlistButton />
-              <WatchedButton />
-              <FavoriteButton />
+              <WatchlistButton
+                mediaType={detail.mediaType}
+                tmdbId={detail.tmdbId}
+                initialActive={detail.viewer?.inWatchlist ?? false}
+              />
+              <WatchedButton
+                mediaType={detail.mediaType}
+                tmdbId={detail.tmdbId}
+                initialActive={detail.viewer?.watched ?? false}
+              />
+              <FavoriteButton
+                mediaType={detail.mediaType}
+                tmdbId={detail.tmdbId}
+                initialActive={detail.viewer?.favorite ?? false}
+              />
               {detail.trailerUrl ? (
                 <ButtonLink href={detail.trailerUrl} variant="secondary">
                   Trailer
@@ -396,10 +455,15 @@ export async function DetailPage({ mediaType, tmdbId }: { mediaType: 'movie' | '
           <div className="rounded-md border border-border bg-white/6 p-5">
             <h2 className="text-xl font-semibold">Your rating</h2>
             <div className="mt-4">
-              <RatingControl />
+              <RatingControl mediaType={detail.mediaType} tmdbId={detail.tmdbId} initialRating={detail.viewer?.rating ?? 0} />
             </div>
           </div>
-          <ReviewForm />
+          <ReviewForm mediaType={detail.mediaType} tmdbId={detail.tmdbId} />
+          <MediaListControls
+            mediaType={detail.mediaType}
+            tmdbId={detail.tmdbId}
+            lists={detail.viewer?.lists ?? []}
+          />
           <div className="rounded-md border border-border bg-white/6 p-5">
             <h2 className="text-xl font-semibold">Recommended next</h2>
             <div className="mt-4 space-y-3">
@@ -474,16 +538,16 @@ export async function ReviewPage({ reviewId }: { reviewId: string }) {
         <p className="mt-2 text-sm leading-6 text-muted">
           Likes, comments, and spoiler visibility are represented in the API contract and ready for persistence.
         </p>
-        <Button className="mt-5" type="button">
-          Like review
-        </Button>
+        <div className="mt-5">
+          <ReviewLikeButton reviewId={review.id} initialLiked={review.likedByViewer ?? false} />
+        </div>
       </aside>
     </section>
   );
 }
 
 export async function ListPage({ listId }: { listId: string }) {
-  const list = await getList(listId);
+  const [list, comments] = await Promise.all([getList(listId), getListComments(listId)]);
   if (!list) {
     return (
       <section className="section py-12">
@@ -493,17 +557,60 @@ export async function ListPage({ listId }: { listId: string }) {
   }
   return (
     <section className="section space-y-8 py-12">
-      <div className="rounded-md border border-border bg-white/6 p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-bold uppercase text-primary">Community list</p>
-            <h1 className="mt-2 text-4xl font-black">{list.title}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{list.description}</p>
+      <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-8">
+          <div className="rounded-md border border-border bg-white/6 p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-bold uppercase text-primary">Community list</p>
+                <h1 className="mt-2 text-4xl font-black">{list.title}</h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{list.description}</p>
+              </div>
+              {list.isPrivate ? <Lock aria-label="Private list" className="h-6 w-6 text-muted" /> : null}
+            </div>
           </div>
-          {list.isPrivate ? <Lock aria-label="Private list" className="h-6 w-6 text-muted" /> : null}
+          {list.viewerCanEdit ? (
+            <ListItemManager list={list} />
+          ) : (
+            <MediaGrid items={list.items} />
+          )}
         </div>
+        <ListEngagement list={list} comments={comments} />
       </div>
-      <MediaGrid items={list.items} />
+    </section>
+  );
+}
+
+export async function NotificationsPage() {
+  const notifications = await getNotifications();
+  return (
+    <section className="section py-12">
+      <SectionHeader
+        eyebrow="Notifications"
+        title="Updates"
+        description="List additions, new followers, and activity from people and lists you follow."
+        action={<MarkNotificationsReadButton />}
+      />
+      <div className="space-y-3">
+        {notifications.items.length === 0 ? (
+          <EmptyState title="No notifications yet" description="Follow people and lists to fill this tab." />
+        ) : null}
+        {notifications.items.map((notification) => (
+          <Link
+            key={notification.id}
+            href={notification.href}
+            className="block rounded-md border border-border bg-white/6 p-4 transition hover:border-primary/50"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-semibold">{notification.title}</h2>
+                <p className="mt-1 text-sm text-muted">{notification.body}</p>
+              </div>
+              <time className="shrink-0 text-xs text-muted">{formatDate(notification.createdAt)}</time>
+            </div>
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }
@@ -514,7 +621,7 @@ export async function FeedPage() {
     <section className="section py-12">
       <SectionHeader eyebrow="Social" title="Activity feed" description="Updates from people you follow." />
       <div className="space-y-4">
-        {feed.map((event) => (
+        {feed.items.map((event) => (
           <ActivityFeedItem key={event.id} event={event} />
         ))}
       </div>
@@ -568,7 +675,7 @@ export async function CollectionPage({
   kind: 'watchlist' | 'watched' | 'favorites';
   icon: 'bookmark' | 'check' | 'heart';
 }) {
-  const recommendations = await getRecommendations();
+  const items = await getCollection(kind);
   const title = kind === 'watchlist' ? 'Watchlist' : kind === 'watched' ? 'Watched' : 'Favorites';
   const Icon = icon === 'bookmark' ? Bookmark : icon === 'check' ? CheckCircle2 : Heart;
   return (
@@ -583,7 +690,7 @@ export async function CollectionPage({
           </span>
         }
       />
-      <MediaGrid items={recommendations.slice(0, 6).map((item) => item.media)} />
+      <MediaGrid items={items} emptyTitle={`No ${title.toLowerCase()} yet`} emptyDescription="Add titles from any movie or series page." />
     </section>
   );
 }
@@ -615,37 +722,13 @@ export function NewListPage() {
         title="Create a list"
         description="Lists can be public or private, reordered, liked, and commented on."
       />
-      <form className="max-w-2xl rounded-md border border-border bg-white/6 p-6">
-        <label className="block text-sm font-semibold">
-          Title
-          <input
-            name="title"
-            autoComplete="off"
-            className="mt-2 w-full rounded-md border border-border bg-black/30 px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-          />
-        </label>
-        <label className="mt-4 block text-sm font-semibold">
-          Description
-          <textarea
-            name="description"
-            autoComplete="off"
-            className="mt-2 min-h-32 w-full rounded-md border border-border bg-black/30 px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-          />
-        </label>
-        <label className="mt-4 flex items-center gap-2 text-sm text-muted">
-          <input type="checkbox" />
-          Private list
-        </label>
-        <Button type="button" className="mt-6">
-          <ListPlus aria-hidden="true" className="h-4 w-4" />
-          Create list
-        </Button>
-      </form>
+      <NewListForm />
     </section>
   );
 }
 
-export function SettingsPage({ area }: { area: 'profile' | 'account' | 'security' }) {
+export async function SettingsPage({ area }: { area: 'profile' | 'account' | 'security' }) {
+  const user = await getCurrentUser();
   const copy = {
     profile: ['Profile settings', 'Edit display name, bio, location, avatar, and favorite genres.'],
     account: ['Account settings', 'Manage email, username, connected OAuth accounts, and export options.'],
@@ -661,7 +744,7 @@ export function SettingsPage({ area }: { area: 'profile' | 'account' | 'security
           </Link>
         ))}
       </aside>
-      <form className="rounded-md border border-border bg-white/6 p-6">
+      <div>
         <div className="flex items-center gap-3">
           <ShieldCheck aria-hidden="true" className="h-6 w-6 text-primary" />
           <div>
@@ -669,28 +752,12 @@ export function SettingsPage({ area }: { area: 'profile' | 'account' | 'security
             <p className="mt-1 text-sm text-muted">{copy[area][1]}</p>
           </div>
         </div>
-        <div className="mt-6 grid gap-4">
-          <label className="block text-sm font-semibold">
-            Primary field
-            <input
-              name="primary"
-              autoComplete="off"
-              className="mt-2 w-full rounded-md border border-border bg-black/30 px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-            />
-          </label>
-          <label className="block text-sm font-semibold">
-            Notes
-            <textarea
-              name="notes"
-              autoComplete="off"
-              className="mt-2 min-h-32 w-full rounded-md border border-border bg-black/30 px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-            />
-          </label>
+        <div className="mt-6">
+          {area === 'profile' ? <ProfileSettingsForm /> : null}
+          {area === 'account' ? <AccountSettingsPanel user={user} /> : null}
+          {area === 'security' ? <SecuritySettingsForm /> : null}
         </div>
-        <Button type="button" className="mt-6">
-          Save changes
-        </Button>
-      </form>
+      </div>
     </section>
   );
 }

@@ -1,10 +1,13 @@
-import { Body, Controller, Get, Headers, HttpCode, Inject, Post, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Inject, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { CookieOptions, Request, Response } from 'express';
 import { envelope } from '../common/http.js';
 import type { Env } from '../config/env.js';
 import { LoginDto, RegisterDto } from './auth.dto.js';
+import { ApiAuthGuard } from './api-auth.guard.js';
 import { AuthService } from './auth.service.js';
+import { ChangePasswordDto, PasswordResetConfirmDto, PasswordResetRequestDto } from '../common/dto.js';
+import { CurrentUser, type RequestUser } from './current-user.decorator.js';
 
 @Controller('auth')
 export class AuthController {
@@ -107,14 +110,22 @@ export class AuthController {
 
   @HttpCode(202)
   @Post('password-reset')
-  passwordReset() {
+  async passwordReset(@Body() body: PasswordResetRequestDto) {
+    await this.auth.requestPasswordReset(body.email);
     return envelope({ accepted: true });
   }
 
   @HttpCode(204)
+  @Post('password-reset/confirm')
+  async confirmPasswordReset(@Body() body: PasswordResetConfirmDto) {
+    await this.auth.confirmPasswordReset(body);
+  }
+
+  @HttpCode(204)
+  @UseGuards(ApiAuthGuard)
   @Post('change-password')
-  changePassword() {
-    return;
+  async changePassword(@CurrentUser() user: RequestUser, @Body() body: ChangePasswordDto) {
+    await this.auth.changePassword(user.id, body);
   }
 
   private setRefreshCookie(response: Response, token: string) {

@@ -48,6 +48,61 @@ export function googleAuthUrl(returnTo: string) {
   return `${API_URL}/auth/google?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
+export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await requestWithAuth(path, init);
+  if (response.status === 204) return null as T;
+
+  if (!response.ok) {
+    throw new Error(await errorMessage(response));
+  }
+
+  const payload = (await response.json()) as ApiEnvelope<T> | T;
+  return typeof payload === 'object' && payload !== null && 'data' in payload
+    ? (payload as ApiEnvelope<T>).data
+    : (payload as T);
+}
+
+async function requestWithAuth(path: string, init: RequestInit) {
+  if (!accessToken) {
+    try {
+      await refreshSession();
+    } catch {
+      setAccessToken(null);
+    }
+  }
+
+  let response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...init.headers,
+    },
+  });
+
+  if (response.status === 401) {
+    try {
+      await refreshSession();
+      response = await fetch(`${API_URL}${path}`, {
+        ...init,
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          ...init.headers,
+        },
+      });
+    } catch {
+      setAccessToken(null);
+    }
+  }
+
+  return response;
+}
+
 async function authRequest(path: string, body?: unknown) {
   const response = await fetch(`${API_URL}${path}`, {
     method: 'POST',

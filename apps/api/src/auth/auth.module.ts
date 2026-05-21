@@ -5,6 +5,7 @@ import { DatabaseModule } from '../database/database.module.js';
 import type { Env } from '../config/env.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { ApiAuthGuard } from './api-auth.guard.js';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AuthService } from './auth.service.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, ApiAuthGuard],
+  exports: [AuthService, ApiAuthGuard],
 })
 export class AuthModule {}
