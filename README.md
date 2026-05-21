@@ -47,6 +47,10 @@ Set `TMDB_READ_ACCESS_TOKEN` in `.env` for live TMDB-backed discovery. `TMDB_API
 
 TMDB-backed API surfaces include trending, movie/series lists, multi-search, genres, configuration, and rich detail pages with appended credits, videos, similar titles, and TMDB recommendations.
 
+For Google auth, set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL`. The callback should point to the API route, for example `http://localhost:4000/api/auth/google/callback`.
+
+Auth data is persisted in PostgreSQL through Prisma. Refresh tokens are stored only as hashes in the database and the raw token stays in the HttpOnly cookie.
+
 ## Quality Gates
 
 ```bash

@@ -17,6 +17,7 @@ import {
   WatchedButton,
   WatchlistButton,
 } from '@/components/action-buttons';
+import { AuthForm } from '@/components/auth-form';
 import { ActivityFeedItem } from '@/components/activity-feed-item';
 import { Button, ButtonLink } from '@/components/button';
 import { ListCard } from '@/components/list-card';
@@ -601,71 +602,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           project contract.
         </p>
       </div>
-      <form className="rounded-md border border-border bg-white/6 p-6">
-        {!isLogin ? (
-          <label className="block text-sm font-semibold">
-            Display name
-            <input
-              name="displayName"
-              autoComplete="name"
-              className="mt-2 w-full rounded-md border border-border bg-black/30 px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-            />
-          </label>
-        ) : null}
-        <label className="mt-4 block text-sm font-semibold">
-          {isLogin ? 'Email or username' : 'Email'}
-          <input
-            name={isLogin ? 'identifier' : 'email'}
-            type={isLogin ? 'text' : 'email'}
-            autoComplete={isLogin ? 'username' : 'email'}
-            spellCheck={false}
-            className="mt-2 w-full rounded-md border border-border bg-black/30 px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-          />
-        </label>
-        {!isLogin ? (
-          <label className="mt-4 block text-sm font-semibold">
-            Username
-            <input
-              name="username"
-              autoComplete="username"
-              spellCheck={false}
-              className="mt-2 w-full rounded-md border border-border bg-black/30 px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-            />
-          </label>
-        ) : null}
-        <label className="mt-4 block text-sm font-semibold">
-          Password
-          <input
-            name="password"
-            type="password"
-            autoComplete={isLogin ? 'current-password' : 'new-password'}
-            className="mt-2 w-full rounded-md border border-border bg-black/30 px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-          />
-        </label>
-        <Button type="button" className="mt-6 w-full">
-          {isLogin ? 'Log in' : 'Create account'}
-        </Button>
-        <Button type="button" variant="secondary" className="mt-3 w-full">
-          Continue with Google
-        </Button>
-        <p className="mt-5 text-center text-sm text-muted">
-          {isLogin ? (
-            <>
-              New here?{' '}
-              <Link href="/register" className="font-semibold text-primary">
-                Create an account
-              </Link>
-            </>
-          ) : (
-            <>
-              Already joined?{' '}
-              <Link href="/login" className="font-semibold text-primary">
-                Log in
-              </Link>
-            </>
-          )}
-        </p>
-      </form>
+      <AuthForm mode={mode} />
     </section>
   );
 }

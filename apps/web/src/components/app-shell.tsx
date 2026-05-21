@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { Clapperboard, Home, ListVideo, Menu, Sparkles, Tv, UserRound } from 'lucide-react';
 import type { ReactNode } from 'react';
+import type { AuthUser } from '@buzzshot/shared';
 import { ButtonLink } from './button';
+import { LogoutButton } from './logout-button';
 import { SearchBar } from './search-bar';
+import { getCurrentUser } from '@/lib/auth-server';
 
 const nav = [
   { href: '/', label: 'Home', icon: Home },
@@ -12,7 +15,7 @@ const nav = [
   { href: '/for-you', label: 'For You', icon: UserRound },
 ];
 
-export function Navbar() {
+export function Navbar({ user }: { user: AuthUser | null }) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-background/[0.76] backdrop-blur-2xl">
       <div className="mx-auto flex h-[4.75rem] max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
@@ -40,15 +43,27 @@ export function Navbar() {
         <div className="ml-auto hidden min-w-[18rem] max-w-xl flex-1 lg:block">
           <SearchBar compact />
         </div>
-        <div className="ml-auto hidden items-center gap-2 md:flex lg:ml-0">
-          <ButtonLink href="/login" variant="ghost" className="rounded-full px-4">
-            Log in
-          </ButtonLink>
-          <ButtonLink href="/register" className="rounded-full px-5 shadow-[0_0_24px_rgba(246,192,47,0.18)]">
-            <Sparkles aria-hidden="true" className="h-4 w-4" />
-            Join
-          </ButtonLink>
-        </div>
+        {user ? (
+          <div className="ml-auto hidden items-center gap-2 md:flex lg:ml-0">
+            <ButtonLink href={`/profile/${user.username}`} variant="ghost" className="rounded-full px-4">
+              {user.displayName}
+            </ButtonLink>
+            <ButtonLink href="/settings/profile" variant="secondary" className="rounded-full px-4">
+              Settings
+            </ButtonLink>
+            <LogoutButton />
+          </div>
+        ) : (
+          <div className="ml-auto hidden items-center gap-2 md:flex lg:ml-0">
+            <ButtonLink href="/login" variant="ghost" className="rounded-full px-4">
+              Log in
+            </ButtonLink>
+            <ButtonLink href="/register" className="rounded-full px-5 shadow-[0_0_24px_rgba(246,192,47,0.18)]">
+              <Sparkles aria-hidden="true" className="h-4 w-4" />
+              Join
+            </ButtonLink>
+          </div>
+        )}
         <button
           type="button"
           aria-label="Open navigation"
@@ -96,13 +111,15 @@ export function UserMenu() {
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export async function AppShell({ children }: { children: ReactNode }) {
+  const user = await getCurrentUser();
+
   return (
     <>
       <a href="#main-content" className="skip-link">
         Skip to Content
       </a>
-      <Navbar />
+      <Navbar user={user} />
       <main id="main-content" className="min-h-screen pb-24 md:pb-0">
         {children}
       </main>

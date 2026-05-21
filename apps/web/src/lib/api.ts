@@ -24,14 +24,23 @@ const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000
 const API_URL =
   typeof window === 'undefined' ? (process.env.INTERNAL_API_URL ?? PUBLIC_API_URL) : PUBLIC_API_URL;
 
-async function readApi<T>(path: string, fallback: T, init?: RequestInit): Promise<T> {
+type ApiRequestInit = RequestInit & {
+  next?: {
+    revalidate?: number | false;
+  };
+};
+
+async function readApi<T>(path: string, fallback: T, init?: ApiRequestInit): Promise<T> {
+  const { headers, next, ...requestInit } = init ?? {};
+  const cacheInit = requestInit.cache === 'no-store' ? {} : { next: next ?? { revalidate: 120 } };
+
   try {
     const response = await fetch(`${API_URL}${path}`, {
-      ...init,
-      next: { revalidate: 120 },
+      ...requestInit,
+      ...cacheInit,
       headers: {
         Accept: 'application/json',
-        ...init?.headers,
+        ...headers,
       },
     });
     if (!response.ok) return fallback;
@@ -89,6 +98,7 @@ export function getProfile(username: string) {
   return readApi<Profile | null>(
     `/profiles/${username}`,
     profiles.find((profile) => profile.username === username) ?? null,
+    { cache: 'no-store' },
   );
 }
 
