@@ -17,8 +17,13 @@ export function ReviewForm({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    if (rating < 0.5) {
+      setError('Choose a star rating before publishing.');
+      return;
+    }
     setIsSubmitting(true);
     const formData = new FormData(event.currentTarget);
+    const body = String(formData.get('reviewBody') ?? '').trim();
 
     try {
       await apiJson('/reviews', {
@@ -26,10 +31,10 @@ export function ReviewForm({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId
         body: JSON.stringify({
           mediaType,
           tmdbId,
-          rating: rating || 0.5,
-          title: String(formData.get('reviewTitle') ?? ''),
-          body: String(formData.get('reviewBody') ?? ''),
-          hasSpoilers: spoilers,
+          rating,
+          title: String(formData.get('reviewTitle') ?? '').trim(),
+          body,
+          hasSpoilers: body ? spoilers : false,
         }),
       });
       event.currentTarget.reset();
@@ -37,7 +42,9 @@ export function ReviewForm({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId
       setSpoilers(false);
       router.refresh();
     } catch (submissionError) {
-      setError(submissionError instanceof Error ? submissionError.message : 'Could not publish review.');
+      setError(
+        submissionError instanceof Error ? submissionError.message : 'Could not publish review.',
+      );
       if (String(submissionError).includes('Authentication')) {
         router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
       }
@@ -49,11 +56,14 @@ export function ReviewForm({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId
   return (
     <form onSubmit={onSubmit} className="rounded-md border border-border bg-white/6 p-5">
       <h2 className="text-xl font-semibold">Write a review</h2>
+      <p className="mt-2 text-sm leading-6 text-muted">
+        A rating is required. Written notes are optional.
+      </p>
       <div className="mt-4">
         <RatingControl initialRating={rating} onChange={setRating} />
       </div>
       <label className="mt-4 block text-sm font-semibold">
-        Title
+        Title <span className="font-normal text-muted">(optional)</span>
         <input
           name="reviewTitle"
           autoComplete="off"
@@ -62,7 +72,7 @@ export function ReviewForm({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId
         />
       </label>
       <label className="mt-4 block text-sm font-semibold">
-        Review
+        Review <span className="font-normal text-muted">(optional)</span>
         <textarea
           name="reviewBody"
           autoComplete="off"
@@ -71,7 +81,11 @@ export function ReviewForm({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId
         />
       </label>
       <label className="mt-4 flex items-center gap-2 text-sm text-muted">
-        <input type="checkbox" checked={spoilers} onChange={(event) => setSpoilers(event.target.checked)} />
+        <input
+          type="checkbox"
+          checked={spoilers}
+          onChange={(event) => setSpoilers(event.target.checked)}
+        />
         Contains spoilers
       </label>
       {error ? <p className="mt-3 text-sm text-red-200">{error}</p> : null}

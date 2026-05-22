@@ -1,8 +1,8 @@
 'use client';
 
-import { Bookmark, CheckCircle2, Heart, Plus, Star } from 'lucide-react';
+import { Bookmark, CheckCircle2, Heart, Plus, Star, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import type { MediaType } from '@buzzshot/shared';
 import { apiJson } from '@/lib/auth-client';
 import { Button } from './button';
@@ -29,6 +29,10 @@ function ToggleAction({
   const [isPending, startTransition] = useTransition();
   const Icon = icon === 'watchlist' ? Bookmark : icon === 'watched' ? CheckCircle2 : Heart;
 
+  useEffect(() => {
+    setActive(initialActive);
+  }, [initialActive]);
+
   function toggle() {
     if (!mediaType || !tmdbId) {
       setActive((value) => !value);
@@ -44,7 +48,8 @@ function ToggleAction({
             body: JSON.stringify({ mediaType, tmdbId }),
           });
         } else {
-          await apiJson(`/${endpoint}?mediaType=${mediaType}&tmdbId=${tmdbId}`, { method: 'DELETE' });
+          const params = new URLSearchParams({ mediaType, tmdbId: String(tmdbId) });
+          await apiJson(`/${endpoint}?${params.toString()}`, { method: 'DELETE' });
         }
         router.refresh();
       } catch {
@@ -68,16 +73,52 @@ function ToggleAction({
   );
 }
 
-export function WatchlistButton(props: { mediaType?: MediaType; tmdbId?: number; initialActive?: boolean }) {
-  return <ToggleAction label="Watchlist" activeLabel="Saved" icon="watchlist" endpoint="watchlist" {...props} />;
+export function WatchlistButton(props: {
+  mediaType?: MediaType;
+  tmdbId?: number;
+  initialActive?: boolean;
+}) {
+  return (
+    <ToggleAction
+      label="Watchlist"
+      activeLabel="In watchlist"
+      icon="watchlist"
+      endpoint="watchlist"
+      {...props}
+    />
+  );
 }
 
-export function WatchedButton(props: { mediaType?: MediaType; tmdbId?: number; initialActive?: boolean }) {
-  return <ToggleAction label="Watched" activeLabel="Watched" icon="watched" endpoint="watched" {...props} />;
+export function WatchedButton(props: {
+  mediaType?: MediaType;
+  tmdbId?: number;
+  initialActive?: boolean;
+}) {
+  return (
+    <ToggleAction
+      label="Watched"
+      activeLabel="Watched"
+      icon="watched"
+      endpoint="watched"
+      {...props}
+    />
+  );
 }
 
-export function FavoriteButton(props: { mediaType?: MediaType; tmdbId?: number; initialActive?: boolean }) {
-  return <ToggleAction label="Favorite" activeLabel="Favorite" icon="favorite" endpoint="favorites" {...props} />;
+export function FavoriteButton(props: {
+  mediaType?: MediaType;
+  tmdbId?: number;
+  initialActive?: boolean;
+}) {
+  return (
+    <ToggleAction
+      label="Favorite"
+      activeLabel="Favorited"
+      icon="favorite"
+      endpoint="favorites"
+      {...props}
+    />
+  );
 }
 
 export function FollowButton({
@@ -145,6 +186,10 @@ export function RatingControl({
   const [rating, setRating] = useState(initialRating);
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    setRating(initialRating);
+  }, [initialRating]);
+
   function rate(value: number) {
     setRating(value);
     onChange?.(value);
@@ -162,26 +207,55 @@ export function RatingControl({
     });
   }
 
+  function clearRating() {
+    setRating(0);
+    onChange?.(0);
+    if (!mediaType || !tmdbId) return;
+    startTransition(async () => {
+      try {
+        const params = new URLSearchParams({ mediaType, tmdbId: String(tmdbId) });
+        await apiJson(`/ratings?${params.toString()}`, { method: 'DELETE' });
+        router.refresh();
+      } catch {
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      }
+    });
+  }
+
   return (
-    <div className="flex items-center gap-1" aria-label="Your rating">
-      {Array.from({ length: 5 }, (_, index) => {
-        const value = index + 1;
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => rate(value)}
-            disabled={isPending}
-            className="rounded p-1 text-primary transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-            aria-label={`Rate ${value} stars`}
-          >
-            <Star
-              aria-hidden="true"
-              className={rating >= value ? 'h-6 w-6 fill-primary' : 'h-6 w-6 text-white/30'}
-            />
-          </button>
-        );
-      })}
+    <div className="flex flex-wrap items-center gap-2" aria-label="Your rating">
+      <div className="flex items-center gap-1">
+        {Array.from({ length: 5 }, (_, index) => {
+          const value = index + 1;
+          return (
+            <button
+              key={value}
+              type="button"
+              onClick={() => rate(value)}
+              disabled={isPending}
+              className="rounded p-1 text-primary transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+              aria-label={`Rate ${value} stars`}
+            >
+              <Star
+                aria-hidden="true"
+                className={rating >= value ? 'h-6 w-6 fill-primary' : 'h-6 w-6 text-white/30'}
+              />
+            </button>
+          );
+        })}
+      </div>
+      {rating > 0 ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="min-h-8 px-2 py-1 text-xs"
+          onClick={clearRating}
+          disabled={isPending}
+        >
+          <X aria-hidden="true" className="h-3.5 w-3.5" />
+          Clear
+        </Button>
+      ) : null}
     </div>
   );
 }

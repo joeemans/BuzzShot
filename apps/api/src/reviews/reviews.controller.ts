@@ -80,27 +80,43 @@ export class ReviewsController {
   @Post()
   async create(@CurrentUser() user: RequestUser, @Body() body: ReviewCreateDto) {
     const mediaType = toPrismaMediaType(body.mediaType);
-    const review = await this.prisma.review.upsert({
-      where: { userId_tmdbId_mediaType: { userId: user.id, tmdbId: body.tmdbId, mediaType } },
-      update: {
-        rating: body.rating,
-        title: body.title,
-        body: body.body,
-        hasSpoilers: body.hasSpoilers,
-      },
-      create: {
-        userId: user.id,
-        tmdbId: body.tmdbId,
-        mediaType,
-        rating: body.rating,
-        title: body.title,
-        body: body.body,
-        hasSpoilers: body.hasSpoilers,
-      },
-      include: this.reviewInclude(),
-    });
-    await this.prisma.activityEvent.create({
-      data: { actorId: user.id, verb: ActivityVerb.REVIEWED, tmdbId: body.tmdbId, mediaType, reviewId: review.id },
+    const title = this.reviewTitle(body.title, body.rating);
+    const reviewBody = body.body?.trim() ?? '';
+    const review = await this.prisma.$transaction(async (tx) => {
+      const saved = await tx.review.upsert({
+        where: { userId_tmdbId_mediaType: { userId: user.id, tmdbId: body.tmdbId, mediaType } },
+        update: {
+          rating: body.rating,
+          title,
+          body: reviewBody,
+          hasSpoilers: reviewBody ? body.hasSpoilers : false,
+        },
+        create: {
+          userId: user.id,
+          tmdbId: body.tmdbId,
+          mediaType,
+          rating: body.rating,
+          title,
+          body: reviewBody,
+          hasSpoilers: reviewBody ? body.hasSpoilers : false,
+        },
+        include: this.reviewInclude(),
+      });
+      await tx.rating.upsert({
+        where: { userId_tmdbId_mediaType: { userId: user.id, tmdbId: body.tmdbId, mediaType } },
+        update: { value: body.rating },
+        create: { userId: user.id, tmdbId: body.tmdbId, mediaType, value: body.rating },
+      });
+      await tx.activityEvent.create({
+        data: {
+          actorId: user.id,
+          verb: ActivityVerb.REVIEWED,
+          tmdbId: body.tmdbId,
+          mediaType,
+          reviewId: saved.id,
+        },
+      });
+      return saved;
     });
     return envelope(await this.serializeReview(review));
   }
@@ -114,13 +130,38 @@ export class ReviewsController {
   ) {
     const existing = await this.prisma.review.findUnique({ where: { id: reviewId } });
     if (!existing) throw new NotFoundException('Review not found.');
-    if (existing.userId !== user.id) throw new ForbiddenException('You can only edit your own reviews.');
+    if (existing.userId !== user.id)
+      throw new ForbiddenException('You can only edit your own reviews.');
 
     const review = await this.prisma.review.update({
       where: { id: reviewId },
-      data: body,
+      data: {
+        ...body,
+        ...(body.title !== undefined
+          ? { title: this.reviewTitle(body.title, Number(body.rating ?? existing.rating)) }
+          : {}),
+        ...(body.body !== undefined ? { body: body.body.trim() } : {}),
+      },
       include: this.reviewInclude(),
     });
+    if (body.rating !== undefined) {
+      await this.prisma.rating.upsert({
+        where: {
+          userId_tmdbId_mediaType: {
+            userId: user.id,
+            tmdbId: existing.tmdbId,
+            mediaType: existing.mediaType,
+          },
+        },
+        update: { value: body.rating },
+        create: {
+          userId: user.id,
+          tmdbId: existing.tmdbId,
+          mediaType: existing.mediaType,
+          value: body.rating,
+        },
+      });
+    }
     return envelope(await this.serializeReview(review));
   }
 
@@ -130,7 +171,8 @@ export class ReviewsController {
   async remove(@CurrentUser() user: RequestUser, @Param('reviewId') reviewId: string) {
     const existing = await this.prisma.review.findUnique({ where: { id: reviewId } });
     if (!existing) throw new NotFoundException('Review not found.');
-    if (existing.userId !== user.id) throw new ForbiddenException('You can only delete your own reviews.');
+    if (existing.userId !== user.id)
+      throw new ForbiddenException('You can only delete your own reviews.');
     await this.prisma.review.delete({ where: { id: reviewId } });
   }
 
@@ -166,7 +208,11 @@ export class ReviewsController {
 
   @UseGuards(ApiAuthGuard)
   @Post(':reviewId/comments')
-  async comment(@CurrentUser() user: RequestUser, @Param('reviewId') reviewId: string, @Body() body: CommentDto) {
+  async comment(
+    @CurrentUser() user: RequestUser,
+    @Param('reviewId') reviewId: string,
+    @Body() body: CommentDto,
+  ) {
     await this.ensureReview(reviewId);
     const comment = await this.prisma.reviewComment.create({
       data: { userId: user.id, reviewId, body: body.body },
@@ -184,8 +230,10 @@ export class ReviewsController {
     @Param('commentId') commentId: string,
   ) {
     const comment = await this.prisma.reviewComment.findUnique({ where: { id: commentId } });
-    if (!comment || comment.reviewId !== reviewId) throw new NotFoundException('Comment not found.');
-    if (comment.userId !== user.id) throw new ForbiddenException('You can only delete your own comments.');
+    if (!comment || comment.reviewId !== reviewId)
+      throw new NotFoundException('Comment not found.');
+    if (comment.userId !== user.id)
+      throw new ForbiddenException('You can only delete your own comments.');
     await this.prisma.reviewComment.delete({ where: { id: commentId } });
   }
 
@@ -198,7 +246,10 @@ export class ReviewsController {
   }
 
   private async ensureReview(reviewId: string) {
-    const review = await this.prisma.review.findUnique({ where: { id: reviewId }, select: { id: true } });
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { id: true },
+    });
     if (!review) throw new NotFoundException('Review not found.');
   }
 
@@ -227,5 +278,10 @@ export class ReviewsController {
       createdAt: comment.createdAt.toISOString(),
       updatedAt: comment.updatedAt.toISOString(),
     };
+  }
+
+  private reviewTitle(title: string | undefined, rating: number) {
+    const trimmed = title?.trim();
+    return trimmed ? trimmed : `Rated ${Number(rating.toFixed(1))} stars`;
   }
 }

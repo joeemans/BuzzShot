@@ -25,6 +25,19 @@ export type MediaDetail = MediaSummary & {
     character: string;
     avatarUrl: string | null;
   }>;
+  crew: Array<{
+    id: number;
+    name: string;
+    job: string;
+    avatarUrl: string | null;
+  }>;
+  producers: Array<{
+    id: number;
+    name: string;
+    job: string;
+    avatarUrl: string | null;
+  }>;
+  imageUrls: string[];
   similar: MediaSummary[];
   recommendations: Array<{
     media: MediaSummary;
@@ -61,9 +74,12 @@ export type TmdbMovie = {
   runtime?: number | null;
   status?: string;
   videos?: { results?: TmdbVideo[] };
-  credits?: { cast?: TmdbCastMember[] };
+  credits?: { cast?: TmdbCastMember[]; crew?: TmdbCrewMember[] };
+  images?: TmdbImages;
   similar?: TmdbListResponse<TmdbMovie>;
   recommendations?: TmdbListResponse<TmdbMovie>;
+  popularity?: number;
+  vote_count?: number;
 };
 
 export type TmdbSeries = {
@@ -82,9 +98,13 @@ export type TmdbSeries = {
   number_of_seasons?: number;
   status?: string;
   videos?: { results?: TmdbVideo[] };
-  credits?: { cast?: TmdbCastMember[] };
+  credits?: { cast?: TmdbCastMember[]; crew?: TmdbCrewMember[] };
+  created_by?: TmdbCreatedBy[];
+  images?: TmdbImages;
   similar?: TmdbListResponse<TmdbSeries>;
   recommendations?: TmdbListResponse<TmdbSeries>;
+  popularity?: number;
+  vote_count?: number;
 };
 
 export type TmdbSearchResult = (TmdbMovie | TmdbSeries) & {
@@ -103,4 +123,62 @@ export type TmdbCastMember = {
   name: string;
   character?: string;
   profile_path?: string | null;
+  order?: number;
+};
+
+export type TmdbCrewMember = {
+  id: number;
+  name: string;
+  job?: string;
+  department?: string;
+  profile_path?: string | null;
+};
+
+export type TmdbCreatedBy = {
+  id: number;
+  name: string;
+  profile_path?: string | null;
+};
+
+export type TmdbImage = {
+  file_path: string;
+  width?: number;
+  height?: number;
+  aspect_ratio?: number;
+};
+
+export type TmdbImages = {
+  backdrops?: TmdbImage[];
+  posters?: TmdbImage[];
+  profiles?: TmdbImage[];
+};
+
+export type TmdbExternalIds = {
+  imdb_id?: string | null;
+  instagram_id?: string | null;
+  twitter_id?: string | null;
+};
+
+export type TmdbCreditMedia = (TmdbMovie | TmdbSeries) & {
+  media_type?: 'movie' | 'tv';
+  character?: string;
+  job?: string;
+};
+
+export type TmdbPerson = {
+  id: number;
+  name: string;
+  biography?: string;
+  birthday?: string | null;
+  deathday?: string | null;
+  place_of_birth?: string | null;
+  known_for_department?: string | null;
+  profile_path?: string | null;
+  homepage?: string | null;
+  external_ids?: TmdbExternalIds;
+  images?: TmdbImages;
+  combined_credits?: {
+    cast?: TmdbCreditMedia[];
+    crew?: TmdbCreditMedia[];
+  };
 };

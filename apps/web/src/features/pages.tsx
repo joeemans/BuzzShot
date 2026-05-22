@@ -21,18 +21,28 @@ import { AuthForm } from '@/components/auth-form';
 import { ActivityFeedItem } from '@/components/activity-feed-item';
 import { ButtonLink } from '@/components/button';
 import { ListCard } from '@/components/list-card';
-import { ListEngagement, ListItemManager, MediaListControls } from '@/components/list-actions';
+import {
+  DeleteListButton,
+  ListEngagement,
+  ListItemManager,
+  MediaListControls,
+} from '@/components/list-actions';
 import { MediaGrid } from '@/components/media-grid';
 import { NewListForm } from '@/components/new-list-form';
 import { MarkNotificationsReadButton } from '@/components/notification-actions';
 import { PaginationControls } from '@/components/pagination-controls';
+import { PeopleRow } from '@/components/people-row';
 import { ProfileHeader } from '@/components/profile-header';
 import { RatingStars } from '@/components/rating-stars';
 import { ReviewCard } from '@/components/review-card';
 import { ReviewForm } from '@/components/review-form';
 import { ReviewLikeButton } from '@/components/review-actions';
 import { SearchBar } from '@/components/search-bar';
-import { AccountSettingsPanel, ProfileSettingsForm, SecuritySettingsForm } from '@/components/settings-forms';
+import {
+  AccountSettingsPanel,
+  ProfileSettingsForm,
+  SecuritySettingsForm,
+} from '@/components/settings-forms';
 import { EmptyState, ErrorState } from '@/components/states';
 import {
   getCatalog,
@@ -43,7 +53,9 @@ import {
   getListComments,
   getLists,
   getNotifications,
+  getPerson,
   getProfile,
+  getProfileCollection,
   getRecommendations,
   getReview,
   getReviews,
@@ -69,7 +81,9 @@ function SectionHeader({
       <div>
         {eyebrow ? <p className="text-sm font-bold uppercase text-primary">{eyebrow}</p> : null}
         <h2 className="mt-2 text-3xl font-semibold">{title}</h2>
-        {description ? <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{description}</p> : null}
+        {description ? (
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{description}</p>
+        ) : null}
       </div>
       {action}
     </div>
@@ -124,11 +138,36 @@ function TasteGraphPreview() {
         preserveAspectRatio="none"
         className="absolute inset-0 h-full w-full"
       >
-        <path d="M68 74 C145 22 219 29 276 106" stroke="rgba(246,192,47,0.38)" strokeWidth="2" fill="none" />
-        <path d="M277 106 C220 155 180 194 112 228" stroke="rgba(41,203,190,0.34)" strokeWidth="2" fill="none" />
-        <path d="M112 228 C206 254 267 241 337 217" stroke="rgba(246,192,47,0.3)" strokeWidth="2" fill="none" />
-        <path d="M336 129 C328 165 329 190 337 217" stroke="rgba(255,255,255,0.22)" strokeWidth="2" fill="none" />
-        <path d="M174 46 C187 105 153 169 112 228" stroke="rgba(255,255,255,0.18)" strokeWidth="2" fill="none" />
+        <path
+          d="M68 74 C145 22 219 29 276 106"
+          stroke="rgba(246,192,47,0.38)"
+          strokeWidth="2"
+          fill="none"
+        />
+        <path
+          d="M277 106 C220 155 180 194 112 228"
+          stroke="rgba(41,203,190,0.34)"
+          strokeWidth="2"
+          fill="none"
+        />
+        <path
+          d="M112 228 C206 254 267 241 337 217"
+          stroke="rgba(246,192,47,0.3)"
+          strokeWidth="2"
+          fill="none"
+        />
+        <path
+          d="M336 129 C328 165 329 190 337 217"
+          stroke="rgba(255,255,255,0.22)"
+          strokeWidth="2"
+          fill="none"
+        />
+        <path
+          d="M174 46 C187 105 153 169 112 228"
+          stroke="rgba(255,255,255,0.18)"
+          strokeWidth="2"
+          fill="none"
+        />
       </svg>
       {tasteGraphNodes.map((node) => (
         <div
@@ -171,8 +210,8 @@ export async function HomePage() {
               Find the next title worth arguing about.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-foreground/82">
-              Discover films and series, write sharp reviews, build public lists, follow people with taste, and get
-              recommendations with reasons.
+              Discover films and series, write sharp reviews, build public lists, follow people with
+              taste, and get recommendations with reasons.
             </p>
             <div className="mt-8 max-w-2xl">
               <SearchBar />
@@ -241,15 +280,27 @@ export async function HomePage() {
                 Build your taste graph.
               </h2>
               <p className="mt-4 max-w-2xl text-base leading-7 text-foreground/[0.78]">
-                Rate, review, follow, and list your way into recommendations that can explain themselves.
+                Rate, review, follow, and list your way into recommendations that can explain
+                themselves.
               </p>
               <div className="mt-6 flex flex-wrap gap-2 text-xs font-semibold text-muted">
-                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">Ratings</span>
-                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">Reviews</span>
-                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">Follows</span>
-                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">Lists</span>
+                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">
+                  Ratings
+                </span>
+                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">
+                  Reviews
+                </span>
+                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">
+                  Follows
+                </span>
+                <span className="rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5">
+                  Lists
+                </span>
               </div>
-              <ButtonLink href="/register" className="mt-8 rounded-full px-5 shadow-[0_0_32px_rgba(246,192,47,0.22)]">
+              <ButtonLink
+                href="/register"
+                className="mt-8 rounded-full px-5 shadow-[0_0_32px_rgba(246,192,47,0.22)]"
+              >
                 <Sparkles aria-hidden="true" className="h-4 w-4" />
                 Join BuzzShot
               </ButtonLink>
@@ -300,7 +351,11 @@ export async function SearchPage({ query }: { query: string }) {
             <SectionHeader title="People" />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {results.users.map((user) => (
-                <Link key={user.id} href={`/profile/${user.username}`} className="rounded-md border border-border bg-white/6 p-4 hover:border-primary/50">
+                <Link
+                  key={user.id}
+                  href={`/profile/${user.username}`}
+                  className="rounded-md border border-border bg-white/6 p-4 hover:border-primary/50"
+                >
                   <p className="font-semibold">{user.displayName}</p>
                   <p className="text-sm text-muted">@{user.username}</p>
                 </Link>
@@ -333,19 +388,34 @@ export async function SearchPage({ query }: { query: string }) {
   );
 }
 
-export async function DetailPage({ mediaType, tmdbId }: { mediaType: 'movie' | 'series'; tmdbId: number }) {
-  const [detail, reviews] = await Promise.all([getDetail(mediaType, tmdbId), getReviews()]);
+export async function DetailPage({
+  mediaType,
+  tmdbId,
+}: {
+  mediaType: 'movie' | 'series';
+  tmdbId: number;
+}) {
+  const [detail, reviews] = await Promise.all([
+    getDetail(mediaType, tmdbId),
+    getReviews({ mediaType, tmdbId }),
+  ]);
 
   if (!detail) {
     return (
       <section className="section py-12">
-        <ErrorState title="Title not found" description="The requested media item is not available yet." />
+        <ErrorState
+          title="Title not found"
+          description="The requested media item is not available yet."
+        />
       </section>
     );
   }
 
-  const runtime = detail.mediaType === 'movie' ? minutesToRuntime(detail.runtimeMinutes) : `${detail.seasons} seasons`;
-  const mediaReviews = reviews.filter((review) => review.media.tmdbId === detail.tmdbId);
+  const runtime =
+    detail.mediaType === 'movie'
+      ? minutesToRuntime(detail.runtimeMinutes)
+      : `${detail.seasons} seasons`;
+  const mediaReviews = reviews;
 
   return (
     <>
@@ -372,6 +442,9 @@ export async function DetailPage({ mediaType, tmdbId }: { mediaType: 'movie' | '
           <div>
             <p className="text-sm font-bold uppercase text-primary">{detail.mediaType}</p>
             <h1 className="mt-3 text-5xl font-black leading-tight sm:text-7xl">{detail.title}</h1>
+            {detail.tagline ? (
+              <p className="mt-3 max-w-2xl text-xl font-semibold text-primary">{detail.tagline}</p>
+            ) : null}
             <p className="mt-5 max-w-3xl text-lg leading-8 text-foreground/82">{detail.overview}</p>
             <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-muted">
               <span>{formatDate(detail.releaseDate)}</span>
@@ -414,25 +487,31 @@ export async function DetailPage({ mediaType, tmdbId }: { mediaType: 'movie' | '
 
       <section className="section grid gap-8 py-12 lg:grid-cols-[1fr_360px]">
         <div className="space-y-10">
-          <div>
-            <SectionHeader title="Cast" />
-            <div className="grid gap-3 sm:grid-cols-3">
-              {detail.cast.map((member) => (
-                <div key={member.id} className="rounded-md border border-border bg-white/6 p-4">
+          <PeopleRow title="Cast" people={detail.cast} />
+          <PeopleRow
+            title={detail.mediaType === 'movie' ? 'Producers' : 'Creators and producers'}
+            people={detail.producers}
+          />
+          <PeopleRow title="Key crew" people={detail.crew} />
+
+          {detail.imageUrls.length > 0 ? (
+            <div>
+              <SectionHeader title="Stills" />
+              <div className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {detail.imageUrls.map((url) => (
                   <img
-                    src={member.avatarUrl ?? ''}
+                    key={url}
+                    src={url}
                     alt=""
-                    width={48}
-                    height={48}
+                    width={420}
+                    height={236}
                     loading="lazy"
-                    className="h-12 w-12 rounded-md"
+                    className="aspect-video w-[22rem] shrink-0 snap-start rounded-md border border-border object-cover"
                   />
-                  <p className="mt-3 font-semibold">{member.name}</p>
-                  <p className="text-sm text-muted">{member.character}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div>
             <SectionHeader title="Reviews" />
@@ -440,7 +519,10 @@ export async function DetailPage({ mediaType, tmdbId }: { mediaType: 'movie' | '
               {mediaReviews.length > 0 ? (
                 mediaReviews.map((review) => <ReviewCard key={review.id} review={review} />)
               ) : (
-                <EmptyState title="No reviews yet" description="Be the first to write something useful." />
+                <EmptyState
+                  title="No reviews yet"
+                  description="Be the first to write something useful."
+                />
               )}
             </div>
           </div>
@@ -455,7 +537,11 @@ export async function DetailPage({ mediaType, tmdbId }: { mediaType: 'movie' | '
           <div className="rounded-md border border-border bg-white/6 p-5">
             <h2 className="text-xl font-semibold">Your rating</h2>
             <div className="mt-4">
-              <RatingControl mediaType={detail.mediaType} tmdbId={detail.tmdbId} initialRating={detail.viewer?.rating ?? 0} />
+              <RatingControl
+                mediaType={detail.mediaType}
+                tmdbId={detail.tmdbId}
+                initialRating={detail.viewer?.rating ?? 0}
+              />
             </div>
           </div>
           <ReviewForm mediaType={detail.mediaType} tmdbId={detail.tmdbId} />
@@ -485,8 +571,105 @@ export async function DetailPage({ mediaType, tmdbId }: { mediaType: 'movie' | '
   );
 }
 
+export async function PersonPage({ personId }: { personId: number }) {
+  const person = await getPerson(personId);
+
+  if (!person) {
+    return (
+      <section className="section py-12">
+        <ErrorState
+          title="Person not found"
+          description="TMDB does not have a profile for this credit yet."
+        />
+      </section>
+    );
+  }
+
+  return (
+    <section className="section space-y-12 py-12">
+      <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
+        <div>
+          {person.profileUrl ? (
+            <img
+              src={person.profileUrl}
+              alt=""
+              width={500}
+              height={750}
+              className="aspect-[2/3] w-full rounded-md border border-border object-cover shadow-2xl"
+            />
+          ) : (
+            <div className="flex aspect-[2/3] items-center justify-center rounded-md border border-border bg-white/8 text-6xl font-black text-muted">
+              {person.name.slice(0, 1)}
+            </div>
+          )}
+        </div>
+        <div className="self-end">
+          <p className="text-sm font-bold uppercase text-primary">
+            {person.knownForDepartment ?? 'Person'}
+          </p>
+          <h1 className="mt-3 text-5xl font-black leading-tight sm:text-7xl">{person.name}</h1>
+          <div className="mt-5 flex flex-wrap gap-3 text-sm text-muted">
+            <span>Born {formatDate(person.birthday)}</span>
+            {person.deathday ? <span>Died {formatDate(person.deathday)}</span> : null}
+            {person.placeOfBirth ? <span>{person.placeOfBirth}</span> : null}
+          </div>
+          {person.biography ? (
+            <p className="mt-6 max-w-3xl text-base leading-8 text-foreground/82">
+              {person.biography}
+            </p>
+          ) : (
+            <p className="mt-6 max-w-3xl text-base leading-8 text-muted">
+              Biography is not available from TMDB yet.
+            </p>
+          )}
+          <div className="mt-6 flex flex-wrap gap-3">
+            {person.homepage ? (
+              <ButtonLink href={person.homepage} variant="secondary">
+                Homepage
+              </ButtonLink>
+            ) : null}
+            {person.imdbUrl ? (
+              <ButtonLink href={person.imdbUrl} variant="secondary">
+                IMDb
+              </ButtonLink>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {person.imageUrls.length > 1 ? (
+        <div>
+          <SectionHeader title="Photos" />
+          <div className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {person.imageUrls.map((url) => (
+              <img
+                key={url}
+                src={url}
+                alt=""
+                width={240}
+                height={360}
+                loading="lazy"
+                className="aspect-[2/3] w-40 shrink-0 snap-start rounded-md border border-border object-cover"
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div>
+        <SectionHeader title="Known for" />
+        <MediaGrid
+          items={person.knownFor}
+          emptyTitle="No credits found"
+          emptyDescription="TMDB has no linked credits yet."
+        />
+      </div>
+    </section>
+  );
+}
+
 export async function ProfilePage({ username }: { username: string }) {
-  const [profile, reviews, lists] = await Promise.all([getProfile(username), getReviews(), getLists()]);
+  const profile = await getProfile(username);
   if (!profile) {
     return (
       <section className="section py-12">
@@ -494,27 +677,72 @@ export async function ProfilePage({ username }: { username: string }) {
       </section>
     );
   }
+
+  const [reviews, lists, watched, favorites, watchlist] = await Promise.all([
+    getReviews({ username }),
+    getLists(username),
+    getProfileCollection(username, 'watched'),
+    getProfileCollection(username, 'favorites'),
+    profile.viewer?.canEdit ? getProfileCollection(username, 'watchlist') : Promise.resolve([]),
+  ]);
+
   return (
     <section className="section space-y-10 py-12">
       <ProfileHeader profile={profile} />
       <div>
         <SectionHeader title="Recent reviews" />
         <div className="grid gap-4 lg:grid-cols-2">
-          {reviews
-            .filter((review) => review.user.username === username)
-            .map((review) => (
-              <ReviewCard key={review.id} review={review} />
-            ))}
+          {reviews.length > 0 ? (
+            reviews.map((review) => <ReviewCard key={review.id} review={review} />)
+          ) : (
+            <EmptyState
+              title="No reviews yet"
+              description="Ratings can still appear without a written review."
+            />
+          )}
         </div>
       </div>
       <div>
+        <SectionHeader
+          title="Viewed"
+          description="Public viewing history visible on this profile."
+        />
+        <MediaGrid
+          items={watched}
+          emptyTitle="No viewed titles yet"
+          emptyDescription="Watched titles will appear here."
+        />
+      </div>
+      <div>
+        <SectionHeader title="Favorites" description="Public favorites visible on this profile." />
+        <MediaGrid
+          items={favorites}
+          emptyTitle="No favorites yet"
+          emptyDescription="Favorite titles will appear here."
+        />
+      </div>
+      {profile.viewer?.canEdit ? (
+        <div>
+          <SectionHeader
+            title="Private watchlist"
+            description="Only you can see this watchlist on your profile."
+            action={<Lock aria-hidden="true" className="h-5 w-5 text-muted" />}
+          />
+          <MediaGrid
+            items={watchlist}
+            emptyTitle="No watchlist titles yet"
+            emptyDescription="Save titles from any movie or series page."
+          />
+        </div>
+      ) : null}
+      <div>
         <SectionHeader title="Lists" />
         <div className="grid gap-4 lg:grid-cols-2">
-          {lists
-            .filter((list) => list.owner.username === username)
-            .map((list) => (
-              <ListCard key={list.id} list={list} />
-            ))}
+          {lists.length > 0 ? (
+            lists.map((list) => <ListCard key={list.id} list={list} />)
+          ) : (
+            <EmptyState title="No lists yet" description="Public lists will appear here." />
+          )}
         </div>
       </div>
     </section>
@@ -536,7 +764,7 @@ export async function ReviewPage({ reviewId }: { reviewId: string }) {
       <aside className="rounded-md border border-border bg-white/6 p-5">
         <h2 className="text-xl font-semibold">Discuss</h2>
         <p className="mt-2 text-sm leading-6 text-muted">
-          Likes, comments, and spoiler visibility are represented in the API contract and ready for persistence.
+          Like useful reviews and keep spoiler-marked writing clearly labeled.
         </p>
         <div className="mt-5">
           <ReviewLikeButton reviewId={review.id} initialLiked={review.likedByViewer ?? false} />
@@ -566,14 +794,17 @@ export async function ListPage({ listId }: { listId: string }) {
                 <h1 className="mt-2 text-4xl font-black">{list.title}</h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">{list.description}</p>
               </div>
-              {list.isPrivate ? <Lock aria-label="Private list" className="h-6 w-6 text-muted" /> : null}
+              <div className="flex shrink-0 items-center gap-3">
+                {list.isPrivate ? (
+                  <Lock aria-label="Private list" className="h-6 w-6 text-muted" />
+                ) : null}
+                {list.viewerCanEdit ? (
+                  <DeleteListButton listId={list.id} ownerUsername={list.owner.username} />
+                ) : null}
+              </div>
             </div>
           </div>
-          {list.viewerCanEdit ? (
-            <ListItemManager list={list} />
-          ) : (
-            <MediaGrid items={list.items} />
-          )}
+          {list.viewerCanEdit ? <ListItemManager list={list} /> : <MediaGrid items={list.items} />}
         </div>
         <ListEngagement list={list} comments={comments} />
       </div>
@@ -593,7 +824,10 @@ export async function NotificationsPage() {
       />
       <div className="space-y-3">
         {notifications.items.length === 0 ? (
-          <EmptyState title="No notifications yet" description="Follow people and lists to fill this tab." />
+          <EmptyState
+            title="No notifications yet"
+            description="Follow people and lists to fill this tab."
+          />
         ) : null}
         {notifications.items.map((notification) => (
           <Link
@@ -606,7 +840,9 @@ export async function NotificationsPage() {
                 <h2 className="font-semibold">{notification.title}</h2>
                 <p className="mt-1 text-sm text-muted">{notification.body}</p>
               </div>
-              <time className="shrink-0 text-xs text-muted">{formatDate(notification.createdAt)}</time>
+              <time className="shrink-0 text-xs text-muted">
+                {formatDate(notification.createdAt)}
+              </time>
             </div>
           </Link>
         ))}
@@ -619,7 +855,11 @@ export async function FeedPage() {
   const feed = await getFeed();
   return (
     <section className="section py-12">
-      <SectionHeader eyebrow="Social" title="Activity feed" description="Updates from people you follow." />
+      <SectionHeader
+        eyebrow="Social"
+        title="Activity feed"
+        description="Updates from people you follow."
+      />
       <div className="space-y-4">
         {feed.items.map((event) => (
           <ActivityFeedItem key={event.id} event={event} />
@@ -690,7 +930,11 @@ export async function CollectionPage({
           </span>
         }
       />
-      <MediaGrid items={items} emptyTitle={`No ${title.toLowerCase()} yet`} emptyDescription="Add titles from any movie or series page." />
+      <MediaGrid
+        items={items}
+        emptyTitle={`No ${title.toLowerCase()} yet`}
+        emptyDescription="Add titles from any movie or series page."
+      />
     </section>
   );
 }
@@ -700,13 +944,15 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   return (
     <section className="section grid min-h-[calc(100vh-4rem)] items-center gap-8 py-12 lg:grid-cols-[1fr_440px]">
       <div>
-        <p className="text-sm font-bold uppercase text-primary">{isLogin ? 'Welcome back' : 'Create account'}</p>
+        <p className="text-sm font-bold uppercase text-primary">
+          {isLogin ? 'Welcome back' : 'Create account'}
+        </p>
         <h1 className="mt-3 text-5xl font-black leading-tight">
           {isLogin ? 'Return to your watch graph.' : 'Start building a better taste graph.'}
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">
-          Secure email auth, Google OAuth, rotating refresh cookies, and protected account routes are part of the
-          project contract.
+          Secure email auth, Google OAuth, rotating refresh cookies, and protected account routes
+          are part of the project contract.
         </p>
       </div>
       <AuthForm mode={mode} />
@@ -729,17 +975,28 @@ export function NewListPage() {
 
 export async function SettingsPage({ area }: { area: 'profile' | 'account' | 'security' }) {
   const user = await getCurrentUser();
+  const profile = area === 'profile' && user ? await getProfile(user.username) : null;
   const copy = {
     profile: ['Profile settings', 'Edit display name, bio, location, avatar, and favorite genres.'],
-    account: ['Account settings', 'Manage email, username, connected OAuth accounts, and export options.'],
-    security: ['Security settings', 'Change password, revoke refresh tokens, and log out of all devices.'],
+    account: [
+      'Account settings',
+      'Manage email, username, connected OAuth accounts, and export options.',
+    ],
+    security: [
+      'Security settings',
+      'Change password, revoke refresh tokens, and log out of all devices.',
+    ],
   } satisfies Record<typeof area, [string, string]>;
 
   return (
     <section className="section grid gap-8 py-12 lg:grid-cols-[260px_1fr]">
       <aside className="rounded-md border border-border bg-white/6 p-4">
         {(['profile', 'account', 'security'] as const).map((item) => (
-          <Link key={item} href={`/settings/${item}`} className="block rounded px-3 py-2 text-sm hover:bg-white/8">
+          <Link
+            key={item}
+            href={`/settings/${item}`}
+            className="block rounded px-3 py-2 text-sm hover:bg-white/8"
+          >
             {copy[item][0]}
           </Link>
         ))}
@@ -753,7 +1010,7 @@ export async function SettingsPage({ area }: { area: 'profile' | 'account' | 'se
           </div>
         </div>
         <div className="mt-6">
-          {area === 'profile' ? <ProfileSettingsForm /> : null}
+          {area === 'profile' ? <ProfileSettingsForm profile={profile} /> : null}
           {area === 'account' ? <AccountSettingsPanel user={user} /> : null}
           {area === 'security' ? <SecuritySettingsForm /> : null}
         </div>
@@ -765,7 +1022,12 @@ export async function SettingsPage({ area }: { area: 'profile' | 'account' | 'se
 export function NotReadyPage({ title, description }: { title: string; description: string }) {
   return (
     <section className="section py-12">
-      <EmptyState title={title} description={description} actionHref="/for-you" actionLabel="View recommendations" />
+      <EmptyState
+        title={title}
+        description={description}
+        actionHref="/for-you"
+        actionLabel="View recommendations"
+      />
     </section>
   );
 }

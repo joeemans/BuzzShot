@@ -3,6 +3,7 @@ import type {
   CustomList,
   MediaDetail,
   MediaSummary,
+  PersonDetail,
   Profile,
   Recommendation,
   Review,
@@ -213,7 +214,8 @@ export const details: MediaDetail[] = mediaItems.map((media, index) => ({
     ? { runtimeMinutes: 142 + (index % 4) * 9 }
     : { seasons: 3 + (index % 4) }),
   status: media.mediaType === 'movie' ? 'Released' : 'Returning Series',
-  trailerUrl: 'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${media.title} trailer`),
+  trailerUrl:
+    'https://www.youtube.com/results?search_query=' + encodeURIComponent(`${media.title} trailer`),
   cast: [
     {
       id: index * 10 + 1,
@@ -234,24 +236,69 @@ export const details: MediaDetail[] = mediaItems.map((media, index) => ({
       avatarUrl: avatar(`${media.title} cast`),
     },
   ],
+  crew: [
+    {
+      id: index * 10 + 4,
+      name: 'Story Director',
+      job: media.mediaType === 'movie' ? 'Director' : 'Creator',
+      avatarUrl: avatar(`${media.title} director`),
+    },
+    {
+      id: index * 10 + 5,
+      name: 'Lead Producer',
+      job: 'Producer',
+      avatarUrl: avatar(`${media.title} producer`),
+    },
+  ],
+  producers: [
+    {
+      id: index * 10 + 5,
+      name: 'Lead Producer',
+      job: 'Producer',
+      avatarUrl: avatar(`${media.title} producer`),
+    },
+  ],
+  imageUrls: [media.backdropUrl].filter((url): url is string => Boolean(url)),
   similar: mediaItems
     .filter((item) => item.tmdbId !== media.tmdbId && item.mediaType === media.mediaType)
     .slice(0, 5),
   recommendations: recommendations.filter((item) => item.media.tmdbId !== media.tmdbId).slice(0, 4),
 }));
 
+export const people: PersonDetail[] = details.flatMap((detail) =>
+  [...detail.cast, ...detail.crew].map((person) => ({
+    id: person.id,
+    name: person.name,
+    biography: `${person.name} appears in BuzzShot demo credits for ${detail.title}. Configure TMDB credentials to load full biographies, credits, and images.`,
+    birthday: null,
+    deathday: null,
+    placeOfBirth: null,
+    knownForDepartment: 'Demo',
+    profileUrl: person.avatarUrl,
+    homepage: null,
+    imdbUrl: null,
+    imageUrls: person.avatarUrl ? [person.avatarUrl] : [],
+    knownFor: [detail],
+  })),
+);
+
 export const profiles: Profile[] = users.map((user, index) => ({
   ...user,
   location: ['Cairo', 'Berlin', 'Toronto'][index] ?? 'Remote',
-  favoriteGenres: [['Drama', 'Crime'], ['Thriller', 'Mystery'], ['Science Fiction', 'Animation']][index] ?? [
-    'Drama',
-  ],
+  favoriteGenres: [
+    ['Drama', 'Crime'],
+    ['Thriller', 'Mystery'],
+    ['Science Fiction', 'Animation'],
+  ][index] ?? ['Drama'],
   stats: {
     reviews: 24 + index * 7,
     ratings: 140 + index * 31,
     followers: 420 + index * 88,
     following: 160 + index * 33,
     lists: 6 + index,
+    watched: 52 + index * 14,
+    favorites: 16 + index * 4,
+    watchlist: 20 + index * 3,
   },
 }));
 
@@ -310,7 +357,8 @@ export const lists: CustomList[] = [
     id: 'list_space',
     owner: users[0]!,
     title: 'Big Feelings, Bigger Skies',
-    description: 'Science fiction and fantasy where spectacle is tied to grief, wonder, or obsession.',
+    description:
+      'Science fiction and fantasy where spectacle is tied to grief, wonder, or obsession.',
     isPrivate: false,
     items: [mediaItems[0]!, mediaItems[8]!, mediaItems[10]!, mediaItems[9]!],
     likesCount: 285,
@@ -350,6 +398,20 @@ export function getMediaByType(mediaType: 'movie' | 'series') {
 
 export function getMediaDetail(mediaType: 'movie' | 'series', tmdbId: number) {
   return details.find((item) => item.mediaType === mediaType && item.tmdbId === tmdbId) ?? null;
+}
+
+export function getPersonDetail(personId: number) {
+  return people.find((person) => person.id === personId) ?? null;
+}
+
+export function getProfileCollection(
+  username: string,
+  kind: 'watchlist' | 'watched' | 'favorites',
+) {
+  const index = profiles.findIndex((profile) => profile.username === username);
+  if (index === -1) return [];
+  const offset = kind === 'watchlist' ? 0 : kind === 'watched' ? 3 : 6;
+  return mediaItems.slice(offset, offset + 5 + (index % 2));
 }
 
 export function searchAll(query: string) {

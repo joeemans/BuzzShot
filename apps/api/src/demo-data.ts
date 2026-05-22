@@ -20,8 +20,26 @@ type MediaDetail = MediaSummary & {
   status: string;
   trailerUrl: string | null;
   cast: Array<{ id: number; name: string; character: string; avatarUrl: string | null }>;
+  crew: Array<{ id: number; name: string; job: string; avatarUrl: string | null }>;
+  producers: Array<{ id: number; name: string; job: string; avatarUrl: string | null }>;
+  imageUrls: string[];
   similar: MediaSummary[];
   recommendations: Recommendation[];
+};
+
+type PersonDetail = {
+  id: number;
+  name: string;
+  biography: string;
+  birthday: string | null;
+  deathday: string | null;
+  placeOfBirth: string | null;
+  knownForDepartment: string | null;
+  profileUrl: string | null;
+  homepage: string | null;
+  imdbUrl: string | null;
+  imageUrls: string[];
+  knownFor: MediaSummary[];
 };
 
 type UserSummary = {
@@ -35,7 +53,16 @@ type UserSummary = {
 type Profile = UserSummary & {
   location: string | null;
   favoriteGenres: string[];
-  stats: { reviews: number; ratings: number; followers: number; following: number; lists: number };
+  stats: {
+    reviews: number;
+    ratings: number;
+    followers: number;
+    following: number;
+    lists: number;
+    watched: number;
+    favorites: number;
+    watchlist?: number;
+  };
 };
 
 type Review = {
@@ -82,7 +109,8 @@ type ActivityEvent = {
 
 const poster = (path: string) => `https://image.tmdb.org/t/p/w500${path}`;
 const backdrop = (path: string) => `https://image.tmdb.org/t/p/original${path}`;
-const avatar = (seed: string) => `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed)}`;
+const avatar = (seed: string) =>
+  `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(seed)}`;
 
 export const demoUsers: UserSummary[] = [
   {
@@ -138,7 +166,8 @@ export const demoMedia: MediaSummary[] = [
     tmdbId: 496243,
     mediaType: 'movie',
     title: 'Parasite',
-    overview: 'A struggling family enters a wealthy household through deception and escalating class tension.',
+    overview:
+      'A struggling family enters a wealthy household through deception and escalating class tension.',
     posterUrl: poster('/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg'),
     backdropUrl: backdrop('/TU9NIjwzjoKPwQHoHshkFcQUCG.jpg'),
     releaseDate: '2019-05-30',
@@ -186,7 +215,8 @@ export const demoMedia: MediaSummary[] = [
     tmdbId: 94605,
     mediaType: 'series',
     title: 'Arcane',
-    overview: 'Two sisters become central to a class war transformed by unstable magic and technology.',
+    overview:
+      'Two sisters become central to a class war transformed by unstable magic and technology.',
     posterUrl: poster('/fqldf2t8ztc9aiwn3k6mlX3tvRT.jpg'),
     backdropUrl: backdrop('/rkB4LyZHo1NHXFEDHl9vSD9r1lI.jpg'),
     releaseDate: '2021-11-06',
@@ -223,7 +253,12 @@ export const demoDetails: MediaDetail[] = demoMedia.map((media, index) => ({
   status: media.mediaType === 'movie' ? 'Released' : 'Returning Series',
   trailerUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${media.title} trailer`)}`,
   cast: [
-    { id: index * 10 + 1, name: 'Featured Lead', character: 'Lead', avatarUrl: avatar(`${media.title} lead`) },
+    {
+      id: index * 10 + 1,
+      name: 'Featured Lead',
+      character: 'Lead',
+      avatarUrl: avatar(`${media.title} lead`),
+    },
     {
       id: index * 10 + 2,
       name: 'Supporting Role',
@@ -231,20 +266,71 @@ export const demoDetails: MediaDetail[] = demoMedia.map((media, index) => ({
       avatarUrl: avatar(`${media.title} support`),
     },
   ],
-  similar: demoMedia.filter((item) => item.mediaType === media.mediaType && item.tmdbId !== media.tmdbId).slice(0, 4),
-  recommendations: demoRecommendations.filter((item) => item.media.tmdbId !== media.tmdbId).slice(0, 3),
+  crew: [
+    {
+      id: index * 10 + 3,
+      name: 'Lead Producer',
+      job: 'Producer',
+      avatarUrl: avatar(`${media.title} producer`),
+    },
+    {
+      id: index * 10 + 4,
+      name: 'Story Director',
+      job: media.mediaType === 'movie' ? 'Director' : 'Creator',
+      avatarUrl: avatar(`${media.title} director`),
+    },
+  ],
+  producers: [
+    {
+      id: index * 10 + 3,
+      name: 'Lead Producer',
+      job: 'Producer',
+      avatarUrl: avatar(`${media.title} producer`),
+    },
+  ],
+  imageUrls: [media.backdropUrl].filter((url): url is string => Boolean(url)),
+  similar: demoMedia
+    .filter((item) => item.mediaType === media.mediaType && item.tmdbId !== media.tmdbId)
+    .slice(0, 4),
+  recommendations: demoRecommendations
+    .filter((item) => item.media.tmdbId !== media.tmdbId)
+    .slice(0, 3),
 }));
+
+export const demoPeople: PersonDetail[] = demoDetails.flatMap((detail) =>
+  [...detail.cast, ...detail.crew].map((person) => ({
+    id: person.id,
+    name: person.name,
+    biography: `${person.name} appears in BuzzShot demo credits for ${detail.title}. Configure TMDB credentials to load full biographies, credits, and images.`,
+    birthday: null,
+    deathday: null,
+    placeOfBirth: null,
+    knownForDepartment: 'Demo',
+    profileUrl: person.avatarUrl,
+    homepage: null,
+    imdbUrl: null,
+    imageUrls: person.avatarUrl ? [person.avatarUrl] : [],
+    knownFor: [detail],
+  })),
+);
 
 export const demoProfiles: Profile[] = demoUsers.map((user, index) => ({
   ...user,
   location: ['Cairo', 'Berlin', 'Toronto'][index] ?? 'Remote',
-  favoriteGenres: [['Drama', 'Crime'], ['Thriller', 'Mystery'], ['Animation', 'Science Fiction']][index] ?? ['Drama'],
+  favoriteGenres: [
+    ['Drama', 'Crime'],
+    ['Thriller', 'Mystery'],
+    ['Animation', 'Science Fiction'],
+  ][index] ?? ['Drama'],
   stats: {
     reviews: 21 + index * 8,
     ratings: 120 + index * 35,
     followers: 400 + index * 90,
     following: 140 + index * 30,
     lists: 5 + index,
+    watched: 48 + index * 16,
+    favorites: 12 + index * 5,
+    watchlist: 18 + index * 4,
   },
 }));
 
@@ -291,7 +377,8 @@ export const demoLists: CustomList[] = [
     id: 'list_space',
     owner: demoUsers[0]!,
     title: 'Big Feelings, Bigger Skies',
-    description: 'Science fiction and fantasy where spectacle is tied to grief, wonder, or obsession.',
+    description:
+      'Science fiction and fantasy where spectacle is tied to grief, wonder, or obsession.',
     isPrivate: false,
     items: [demoMedia[0]!, demoMedia[6]!, demoMedia[4]!],
     likesCount: 285,

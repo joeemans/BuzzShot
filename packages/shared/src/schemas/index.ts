@@ -31,6 +31,11 @@ export const profileUpdateSchema = z.object({
   displayName: z.string().min(2).max(80),
   bio: z.string().max(280).nullable(),
   location: z.string().max(80).nullable(),
+  avatarUrl: z
+    .string()
+    .max(90000)
+    .regex(/^(https:\/\/|data:image\/(?:png|jpeg|jpg|webp);base64,)/i)
+    .nullable(),
   favoriteGenres: z.array(z.string()).max(8),
 });
 
@@ -44,8 +49,8 @@ export const reviewInputSchema = z.object({
   tmdbId: z.number().int().positive(),
   mediaType: mediaTypeSchema,
   rating: z.number().min(0.5).max(5),
-  title: z.string().min(3).max(120),
-  body: z.string().min(20).max(4000),
+  title: z.string().max(120).optional(),
+  body: z.string().max(4000).optional(),
   hasSpoilers: z.boolean(),
 });
 

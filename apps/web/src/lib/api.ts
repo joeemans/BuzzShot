@@ -9,6 +9,7 @@ import type {
   MediaSummary,
   NotificationItem,
   Paginated,
+  PersonDetail,
   Profile,
   Recommendation,
   Review,
@@ -17,6 +18,8 @@ import { cookies } from 'next/headers';
 import {
   getMediaByType,
   getMediaDetail,
+  getPersonDetail,
+  getProfileCollection as getDemoProfileCollection,
   lists,
   mediaItems,
   profiles,
@@ -65,7 +68,10 @@ export function getTrending() {
 }
 
 export function getCatalog(mediaType: 'movie' | 'series') {
-  return readApi<MediaSummary[]>(`/media/${mediaType === 'movie' ? 'movies' : 'series'}`, getMediaByType(mediaType));
+  return readApi<MediaSummary[]>(
+    `/media/${mediaType === 'movie' ? 'movies' : 'series'}`,
+    getMediaByType(mediaType),
+  );
 }
 
 export function getDetail(mediaType: 'movie' | 'series', tmdbId: number) {
@@ -84,8 +90,29 @@ export function getSearchResults(query: string) {
   );
 }
 
-export function getReviews() {
-  return readApi<Review[]>('/reviews', reviews);
+export function getReviews(filters?: {
+  tmdbId?: number;
+  mediaType?: 'movie' | 'series';
+  username?: string;
+}) {
+  const params = new URLSearchParams();
+  if (filters?.tmdbId && filters.mediaType) {
+    params.set('tmdbId', String(filters.tmdbId));
+    params.set('mediaType', filters.mediaType);
+  }
+  if (filters?.username) params.set('username', filters.username);
+  const fallback = reviews.filter((review) => {
+    if (filters?.tmdbId && filters.mediaType) {
+      return review.media.tmdbId === filters.tmdbId && review.media.mediaType === filters.mediaType;
+    }
+    if (filters?.username) return review.user.username === filters.username;
+    return true;
+  });
+  const query = params.toString();
+  return readApi<Review[]>(`/reviews${query ? `?${query}` : ''}`, fallback, {
+    auth: true,
+    cache: 'no-store',
+  });
 }
 
 export function getReview(reviewId: string) {
@@ -95,8 +122,10 @@ export function getReview(reviewId: string) {
   );
 }
 
-export function getLists() {
-  return readApi<CustomList[]>('/lists', lists);
+export function getLists(username?: string) {
+  const query = username ? `?username=${encodeURIComponent(username)}` : '';
+  const fallback = username ? lists.filter((list) => list.owner.username === username) : lists;
+  return readApi<CustomList[]>(`/lists${query}`, fallback, { auth: true, cache: 'no-store' });
 }
 
 export function getList(listId: string) {
@@ -108,7 +137,10 @@ export function getList(listId: string) {
 }
 
 export function getListComments(listId: string) {
-  return readApi<CustomListComment[]>(`/lists/${listId}/comments`, [], { auth: true, cache: 'no-store' });
+  return readApi<CustomListComment[]>(`/lists/${listId}/comments`, [], {
+    auth: true,
+    cache: 'no-store',
+  });
 }
 
 export function getProfile(username: string) {
@@ -117,6 +149,20 @@ export function getProfile(username: string) {
     profiles.find((profile) => profile.username === username) ?? null,
     { auth: true, cache: 'no-store' },
   );
+}
+
+export function getProfileCollection(username: string, kind: CollectionKind) {
+  return readApi<MediaSummary[]>(
+    `/profiles/${username}/collections/${kind}`,
+    getDemoProfileCollection(username, kind),
+    { auth: true, cache: 'no-store' },
+  );
+}
+
+export function getPerson(personId: number) {
+  return readApi<PersonDetail | null>(`/media/person/${personId}`, getPersonDetail(personId), {
+    cache: 'no-store',
+  });
 }
 
 export function getFeed() {
@@ -128,7 +174,10 @@ export function getFeed() {
 }
 
 export function getRecommendations() {
-  return readApi<Recommendation[]>('/recommendations/for-you', [], { auth: true, cache: 'no-store' });
+  return readApi<Recommendation[]>('/recommendations/for-you', [], {
+    auth: true,
+    cache: 'no-store',
+  });
 }
 
 export function getCollection(kind: CollectionKind) {

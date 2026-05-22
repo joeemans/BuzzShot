@@ -9,9 +9,13 @@ import type {
   MediaSummary,
   MediaType,
   TmdbCastMember,
+  TmdbCreditMedia,
+  TmdbCrewMember,
   TmdbGenre,
+  TmdbImage,
   TmdbListResponse,
   TmdbMovie,
+  TmdbPerson,
   TmdbSearchResult,
   TmdbSeries,
   TmdbVideo,
@@ -45,6 +49,7 @@ const cacheTtls = {
   trending: 60 * 60 * 6,
   search: 60 * 60 * 24,
   details: 60 * 60 * 24 * 7,
+  people: 60 * 60 * 24 * 14,
   genres: 60 * 60 * 24 * 30,
 };
 
@@ -90,8 +95,12 @@ export class TmdbService {
         this.cacheRecord(0, PrismaMediaType.SERIES, 'genres:series'),
       ),
     ]);
-    this.genreMap = new Map([...movieGenres.genres, ...seriesGenres.genres].map((genre) => [genre.id, genre.name]));
-    return [...new Set([...movieGenres.genres, ...seriesGenres.genres].map((genre) => genre.name))].sort();
+    this.genreMap = new Map(
+      [...movieGenres.genres, ...seriesGenres.genres].map((genre) => [genre.id, genre.name]),
+    );
+    return [
+      ...new Set([...movieGenres.genres, ...seriesGenres.genres].map((genre) => genre.name)),
+    ].sort();
   }
 
   async trending() {
@@ -107,7 +116,10 @@ export class TmdbService {
       .slice(0, 20);
   }
 
-  async list(mediaType: MediaType, list: 'popular' | 'top-rated' | 'now-playing' | 'upcoming' | 'airing-today') {
+  async list(
+    mediaType: MediaType,
+    list: 'popular' | 'top-rated' | 'now-playing' | 'upcoming' | 'airing-today',
+  ) {
     const endpoint = this.listEndpoint(mediaType, list);
     const cacheKey = `tmdb:list:${mediaType}:${list}`;
     const response = await this.cached(
@@ -151,6 +163,16 @@ export class TmdbService {
       this.cacheRecord(tmdbId, this.prismaMediaType(mediaType), 'details'),
     );
     return this.normalizeDetail(response, mediaType);
+  }
+
+  async person(personId: number) {
+    const response = await this.cached(`tmdb:person:${personId}`, cacheTtls.people, () =>
+      this.request<TmdbPerson>(`/person/${personId}`, {
+        append_to_response: 'combined_credits,external_ids,images',
+        include_image_language: 'en,null',
+      }),
+    );
+    return this.normalizePerson(response);
   }
 
   private listEndpoint(
@@ -276,7 +298,9 @@ export class TmdbService {
       : ((item as TmdbSeries).first_air_date ?? null);
     const genres =
       item.genres?.map((genre) => genre.name) ??
-      item.genre_ids?.map((id) => this.genreMap.get(id)).filter((genre): genre is string => Boolean(genre)) ??
+      item.genre_ids
+        ?.map((id) => this.genreMap.get(id))
+        .filter((genre): genre is string => Boolean(genre)) ??
       [];
     const tmdbRating = Number((item.vote_average ?? 0).toFixed(1));
 
@@ -299,7 +323,9 @@ export class TmdbService {
     const summary = this.normalizeSummary(item, mediaType);
     const isMovie = mediaType === 'movie';
     const video = this.pickTrailer(item.videos?.results ?? []);
-    const similar = item.similar?.results?.map((entry) => this.normalizeSummary(entry, mediaType)).slice(0, 8) ?? [];
+    const similar =
+      item.similar?.results?.map((entry) => this.normalizeSummary(entry, mediaType)).slice(0, 8) ??
+      [];
     const recommendations =
       item.recommendations?.results
         ?.map((entry, index) => ({
@@ -311,6 +337,8 @@ export class TmdbService {
 
     const runtime = (item as TmdbMovie).runtime;
     const seasons = (item as TmdbSeries).number_of_seasons;
+    const crew = this.normalizeCrew(item, mediaType);
+    const producers = this.normalizeProducers(item, mediaType);
 
     return {
       ...summary,
@@ -319,6 +347,9 @@ export class TmdbService {
       status: item.status ?? 'Unknown',
       trailerUrl: video ? `https://www.youtube.com/watch?v=${video.key}` : null,
       cast: (item.credits?.cast ?? []).slice(0, 12).map((member) => this.normalizeCast(member)),
+      crew,
+      producers,
+      imageUrls: this.normalizeImages(item.images?.backdrops, 'original', 10),
       similar,
       recommendations,
     };
@@ -333,9 +364,127 @@ export class TmdbService {
     };
   }
 
+  private normalizeCrew(item: TmdbMovie | TmdbSeries, mediaType: MediaType) {
+    const priority = new Set(
+      mediaType === 'movie'
+        ? ['Director', 'Screenplay', 'Writer', 'Story']
+        : ['Creator', 'Executive Producer', 'Producer', 'Showrunner', 'Writer'],
+    );
+    const createdBy =
+      mediaType === 'series'
+        ? ((item as TmdbSeries).created_by ?? []).map((creator) => ({
+            id: creator.id,
+            name: creator.name,
+            job: 'Creator',
+            avatarUrl: this.imageUrl(creator.profile_path, 'w185'),
+          }))
+        : [];
+    const credited = (item.credits?.crew ?? [])
+      .filter((member) => member.job && priority.has(member.job))
+      .map((member) => this.normalizeCrewMember(member));
+    return this.uniquePeople([...createdBy, ...credited]).slice(0, 12);
+  }
+
+  private normalizeProducers(item: TmdbMovie | TmdbSeries, mediaType: MediaType) {
+    const producerJobs = new Set(['Producer', 'Executive Producer']);
+    const crew = (item.credits?.crew ?? [])
+      .filter((member) => member.job && producerJobs.has(member.job))
+      .map((member) => this.normalizeCrewMember(member));
+    const createdBy =
+      mediaType === 'series'
+        ? ((item as TmdbSeries).created_by ?? []).map((creator) => ({
+            id: creator.id,
+            name: creator.name,
+            job: 'Creator',
+            avatarUrl: this.imageUrl(creator.profile_path, 'w185'),
+          }))
+        : [];
+    return this.uniquePeople([...createdBy, ...crew]).slice(0, 12);
+  }
+
+  private normalizeCrewMember(member: TmdbCrewMember) {
+    return {
+      id: member.id,
+      name: member.name,
+      job: member.job ?? member.department ?? 'Crew',
+      avatarUrl: this.imageUrl(member.profile_path, 'w185'),
+    };
+  }
+
+  private uniquePeople<T extends { id: number }>(people: T[]) {
+    const seen = new Set<number>();
+    return people.filter((person) => {
+      if (seen.has(person.id)) return false;
+      seen.add(person.id);
+      return true;
+    });
+  }
+
+  private normalizePerson(person: TmdbPerson) {
+    const credits = [
+      ...(person.combined_credits?.cast ?? []),
+      ...(person.combined_credits?.crew ?? []),
+    ];
+    const knownFor = this.uniqueCreditMedia(credits)
+      .sort((left, right) => this.creditScore(right) - this.creditScore(left))
+      .map((credit) => {
+        const mediaType = credit.media_type === 'tv' ? 'series' : 'movie';
+        return this.normalizeSummary(credit, mediaType);
+      })
+      .slice(0, 16);
+    const imdbId = person.external_ids?.imdb_id;
+
+    return {
+      id: person.id,
+      name: person.name,
+      biography: person.biography ?? '',
+      birthday: person.birthday ?? null,
+      deathday: person.deathday ?? null,
+      placeOfBirth: person.place_of_birth ?? null,
+      knownForDepartment: person.known_for_department ?? null,
+      profileUrl: this.imageUrl(person.profile_path, 'w500'),
+      homepage: person.homepage ?? null,
+      imdbUrl: imdbId ? `https://www.imdb.com/name/${imdbId}/` : null,
+      imageUrls: this.normalizeImages(person.images?.profiles, 'w500', 8),
+      knownFor,
+    };
+  }
+
+  private uniqueCreditMedia(credits: TmdbCreditMedia[]) {
+    const seen = new Set<string>();
+    return credits.filter((credit) => {
+      if (credit.media_type !== 'movie' && credit.media_type !== 'tv') return false;
+      const key = `${credit.media_type}:${credit.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  private creditScore(credit: TmdbCreditMedia) {
+    return (
+      (credit.vote_count ?? 0) + (credit.popularity ?? 0) * 10 + (credit.vote_average ?? 0) * 5
+    );
+  }
+
+  private normalizeImages(
+    images: TmdbImage[] | undefined,
+    size: 'w500' | 'original',
+    limit: number,
+  ) {
+    return (
+      images
+        ?.map((image) => this.imageUrl(image.file_path, size))
+        .filter((url): url is string => Boolean(url))
+        .slice(0, limit) ?? []
+    );
+  }
+
   private pickTrailer(videos: TmdbVideo[]) {
     return (
-      videos.find((video) => video.site === 'YouTube' && video.type === 'Trailer' && video.official) ??
+      videos.find(
+        (video) => video.site === 'YouTube' && video.type === 'Trailer' && video.official,
+      ) ??
       videos.find((video) => video.site === 'YouTube' && video.type === 'Trailer') ??
       videos.find((video) => video.site === 'YouTube')
     );

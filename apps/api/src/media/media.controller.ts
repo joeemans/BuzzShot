@@ -1,4 +1,13 @@
-import { Controller, Get, Headers, Inject, NotFoundException, Param, ParseIntPipe, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Headers,
+  Inject,
+  NotFoundException,
+  Param,
+  ParseIntPipe,
+  Req,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service.js';
@@ -64,6 +73,13 @@ export class MediaController {
     return envelope(await this.media.list('series', 'airing-today'));
   }
 
+  @Get('person/:personId')
+  async person(@Param('personId', ParseIntPipe) personId: number) {
+    const person = await this.media.person(personId);
+    if (!person) throw new NotFoundException('Person not found.');
+    return envelope(person);
+  }
+
   @Get(':mediaType/:tmdbId')
   async detail(
     @Param('mediaType') mediaType: 'movie' | 'series',
@@ -74,7 +90,11 @@ export class MediaController {
     if (mediaType !== 'movie' && mediaType !== 'series') {
       throw new NotFoundException('Unsupported media type.');
     }
-    const detail = await this.media.detail(mediaType, tmdbId, (await this.viewerId(authorization, request)) ?? undefined);
+    const detail = await this.media.detail(
+      mediaType,
+      tmdbId,
+      (await this.viewerId(authorization, request)) ?? undefined,
+    );
     if (!detail) throw new NotFoundException('Media not found.');
     return envelope(detail);
   }

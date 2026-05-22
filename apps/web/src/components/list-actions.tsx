@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, Check, Heart, MessageCircle, Minus, Plus, Search, X } from 'lucide-react';
+import { Bell, Check, Heart, MessageCircle, Minus, Plus, Search, Trash2, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, useTransition, type FormEvent } from 'react';
 import type {
@@ -66,7 +66,9 @@ export function ListItemManager({ list }: { list: CustomList }) {
     const timer = window.setTimeout(async () => {
       setIsSearching(true);
       try {
-        const data = await apiJson<GroupedSearchResults>(`/search?q=${encodeURIComponent(normalized)}`);
+        const data = await apiJson<GroupedSearchResults>(
+          `/search?q=${encodeURIComponent(normalized)}`,
+        );
         setResults(data.media.slice(0, 8));
       } catch {
         setResults([]);
@@ -105,7 +107,9 @@ export function ListItemManager({ list }: { list: CustomList }) {
         setItems((current) => current.filter((item) => mediaKey(item.media) !== mediaKey(media)));
         router.refresh();
       } catch (mutationError) {
-        setError(mutationError instanceof Error ? mutationError.message : 'Could not remove title.');
+        setError(
+          mutationError instanceof Error ? mutationError.message : 'Could not remove title.',
+        );
       }
     });
   }
@@ -120,7 +124,10 @@ export function ListItemManager({ list }: { list: CustomList }) {
         {items.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {items.map((item) => (
-              <article key={item.id} className="grid grid-cols-[72px_1fr] gap-3 rounded-md border border-border bg-white/6 p-3">
+              <article
+                key={item.id}
+                className="grid grid-cols-[72px_1fr] gap-3 rounded-md border border-border bg-white/6 p-3"
+              >
                 <img
                   src={item.media.posterUrl ?? ''}
                   alt=""
@@ -136,7 +143,13 @@ export function ListItemManager({ list }: { list: CustomList }) {
                     {item.media.title}
                   </Link>
                   <p className="mt-1 text-xs text-muted">{item.media.mediaType}</p>
-                  <Button type="button" variant="secondary" className="mt-4" onClick={() => remove(item.media)} disabled={isPending}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="mt-4"
+                    onClick={() => remove(item.media)}
+                    disabled={isPending}
+                  >
                     <Minus aria-hidden="true" className="h-4 w-4" />
                     Remove
                   </Button>
@@ -145,7 +158,9 @@ export function ListItemManager({ list }: { list: CustomList }) {
             ))}
           </div>
         ) : (
-          <div className="rounded-md border border-border bg-white/6 p-8 text-sm text-muted">Search for a title to start this list.</div>
+          <div className="rounded-md border border-border bg-white/6 p-8 text-sm text-muted">
+            Search for a title to start this list.
+          </div>
         )}
       </div>
 
@@ -168,8 +183,17 @@ export function ListItemManager({ list }: { list: CustomList }) {
           {results.map((media) => {
             const existing = itemByMedia.get(mediaKey(media));
             return (
-              <div key={mediaKey(media)} className="flex items-center gap-3 rounded border border-border bg-black/25 p-2">
-                <img src={media.posterUrl ?? ''} alt="" width={44} height={66} className="aspect-[2/3] rounded object-cover" />
+              <div
+                key={mediaKey(media)}
+                className="flex items-center gap-3 rounded border border-border bg-black/25 p-2"
+              >
+                <img
+                  src={media.posterUrl ?? ''}
+                  alt=""
+                  width={44}
+                  height={66}
+                  className="aspect-[2/3] rounded object-cover"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{media.title}</p>
                   <p className="text-xs text-muted">{media.mediaType}</p>
@@ -181,7 +205,11 @@ export function ListItemManager({ list }: { list: CustomList }) {
                   disabled={isPending}
                   className="shrink-0 px-3"
                 >
-                  {existing ? <X aria-hidden="true" className="h-4 w-4" /> : <Plus aria-hidden="true" className="h-4 w-4" />}
+                  {existing ? (
+                    <X aria-hidden="true" className="h-4 w-4" />
+                  ) : (
+                    <Plus aria-hidden="true" className="h-4 w-4" />
+                  )}
                   {existing ? 'Remove' : 'Add'}
                 </Button>
               </div>
@@ -207,26 +235,41 @@ export function MediaListControls({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    setMemberships(lists);
+  }, [lists]);
+
   function toggle(list: MediaListMembership) {
     setError(null);
     const next = !list.containsMedia;
     setMemberships((current) =>
       current.map((item) =>
-        item.id === list.id ? { ...item, containsMedia: next, itemId: next ? item.itemId : null } : item,
+        item.id === list.id
+          ? { ...item, containsMedia: next, itemId: next ? item.itemId : null }
+          : item,
       ),
     );
     startTransition(async () => {
       try {
         if (next) {
-          const updated = await apiJson<{ listItems?: Array<{ media: MediaSummary; id: string }> }>(`/lists/${list.id}/items`, {
-            method: 'POST',
-            body: JSON.stringify({ mediaType, tmdbId }),
-          });
+          const updated = await apiJson<{ listItems?: Array<{ media: MediaSummary; id: string }> }>(
+            `/lists/${list.id}/items`,
+            {
+              method: 'POST',
+              body: JSON.stringify({ mediaType, tmdbId }),
+            },
+          );
           const itemId =
-            updated.listItems?.find((item) => item.media.tmdbId === tmdbId && item.media.mediaType === mediaType)?.id ?? null;
-          setMemberships((current) => current.map((item) => (item.id === list.id ? { ...item, itemId } : item)));
+            updated.listItems?.find(
+              (item) => item.media.tmdbId === tmdbId && item.media.mediaType === mediaType,
+            )?.id ?? null;
+          setMemberships((current) =>
+            current.map((item) => (item.id === list.id ? { ...item, itemId } : item)),
+          );
         } else {
-          await apiJson(`/lists/${list.id}/items?mediaType=${mediaType}&tmdbId=${tmdbId}`, { method: 'DELETE' });
+          await apiJson(`/lists/${list.id}/items?mediaType=${mediaType}&tmdbId=${tmdbId}`, {
+            method: 'DELETE',
+          });
         }
         router.refresh();
       } catch (mutationError) {
@@ -261,13 +304,58 @@ export function MediaListControls({
                 <span className="text-xs text-muted">{list.isPrivate ? 'Private' : 'Public'}</span>
               </span>
               <span className={list.containsMedia ? 'text-primary' : 'text-muted'}>
-                {list.containsMedia ? <Check aria-hidden="true" className="h-4 w-4" /> : <Plus aria-hidden="true" className="h-4 w-4" />}
+                {list.containsMedia ? (
+                  <Check aria-hidden="true" className="h-4 w-4" />
+                ) : (
+                  <Plus aria-hidden="true" className="h-4 w-4" />
+                )}
               </span>
             </button>
           ))}
         </div>
       )}
       {error ? <p className="mt-3 text-sm text-red-200">{error}</p> : null}
+    </div>
+  );
+}
+
+export function DeleteListButton({
+  listId,
+  ownerUsername,
+}: {
+  listId: string;
+  ownerUsername: string;
+}) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function remove() {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      try {
+        await apiJson(`/lists/${listId}`, { method: 'DELETE' });
+        router.push(`/profile/${ownerUsername}`);
+        router.refresh();
+      } catch (mutationError) {
+        setConfirming(false);
+        setError(mutationError instanceof Error ? mutationError.message : 'Could not delete list.');
+      }
+    });
+  }
+
+  return (
+    <div>
+      <Button type="button" variant="danger" onClick={remove} disabled={isPending}>
+        <Trash2 aria-hidden="true" className="h-4 w-4" />
+        {confirming ? 'Confirm delete' : 'Delete list'}
+      </Button>
+      {error ? <p className="mt-2 text-sm text-red-200">{error}</p> : null}
     </div>
   );
 }
@@ -291,14 +379,25 @@ function ListLikeButton({ listId, initialLiked }: { listId: string; initialLiked
   }
 
   return (
-    <Button type="button" variant={liked ? 'primary' : 'secondary'} onClick={toggle} disabled={isPending}>
+    <Button
+      type="button"
+      variant={liked ? 'primary' : 'secondary'}
+      onClick={toggle}
+      disabled={isPending}
+    >
       <Heart aria-hidden="true" className={liked ? 'h-4 w-4 fill-current' : 'h-4 w-4'} />
       {liked ? 'Liked' : 'Like'}
     </Button>
   );
 }
 
-function ListFollowButton({ listId, initialFollowing }: { listId: string; initialFollowing: boolean }) {
+function ListFollowButton({
+  listId,
+  initialFollowing,
+}: {
+  listId: string;
+  initialFollowing: boolean;
+}) {
   const router = useRouter();
   const [following, setFollowing] = useState(initialFollowing);
   const [isPending, startTransition] = useTransition();
@@ -317,7 +416,12 @@ function ListFollowButton({ listId, initialFollowing }: { listId: string; initia
   }
 
   return (
-    <Button type="button" variant={following ? 'primary' : 'secondary'} onClick={toggle} disabled={isPending}>
+    <Button
+      type="button"
+      variant={following ? 'primary' : 'secondary'}
+      onClick={toggle}
+      disabled={isPending}
+    >
       <Bell aria-hidden="true" className={following ? 'h-4 w-4 fill-current' : 'h-4 w-4'} />
       {following ? 'Following' : 'Follow list'}
     </Button>

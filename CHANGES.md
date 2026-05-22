@@ -27,3 +27,7 @@ This file documents intentional implementation choices and deviations from `.age
 - Local Docker Compose keeps `NODE_ENV` configurable and defaults it to development so local startup is not blocked by production secret validation.
 - Custom lists now support follows, list-follower notifications for new additions, list likes/comments in the UI, searchable add/remove flows, and per-title add/remove controls on media detail pages.
 - Added a protected notifications page that combines stored notifications with activity from followed people and followed lists.
+- Profile pages now expose public watched and favorites collections, keep watchlists visible only to their owner as a private section, and keep list deletion behind owner-only API and UI checks.
+- Media details now include horizontal clickable cast, producer/creator, and crew rows, TMDB still galleries, and first-class TMDB-backed person profile pages with known-for credits.
+- Reviews now require an explicit rating while allowing optional written text, and review submission also syncs the standalone rating record.
+- Profile settings now support avatar images through validated HTTPS image URLs or resized local image uploads stored as bounded data images.

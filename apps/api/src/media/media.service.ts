@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service.js';
-import { demoDetails, demoMedia } from '../demo-data.js';
+import { demoDetails, demoMedia, demoPeople } from '../demo-data.js';
 import { TmdbService } from '../tmdb/tmdb.service.js';
 import type { MediaDetail, MediaSummary, MediaType } from '../tmdb/tmdb.types.js';
 import { toPrismaMediaType } from '../common/media.js';
@@ -42,8 +42,17 @@ export class MediaService {
     return {
       ...detail,
       buzz: await this.buzzFor(mediaType, tmdbId),
-      viewer: userId ? await this.viewerStateFor(userId, mediaType, tmdbId) : this.emptyViewerState(),
+      viewer: userId
+        ? await this.viewerStateFor(userId, mediaType, tmdbId)
+        : this.emptyViewerState(),
     };
+  }
+
+  async person(personId: number) {
+    return this.withFallback(
+      () => this.tmdb.person(personId),
+      demoPeople.find((person) => person.id === personId) ?? null,
+    );
   }
 
   async search(query: string) {
@@ -80,7 +89,10 @@ export class MediaService {
     ]);
 
     return {
-      averageRating: ratingAggregate._avg.value == null ? null : Number(Number(ratingAggregate._avg.value).toFixed(1)),
+      averageRating:
+        ratingAggregate._avg.value == null
+          ? null
+          : Number(Number(ratingAggregate._avg.value).toFixed(1)),
       ratingsCount: ratingAggregate._count.value,
       reviewsCount,
     };

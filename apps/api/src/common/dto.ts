@@ -72,15 +72,15 @@ export class ReviewCreateDto extends MediaTargetDto {
   @Max(5)
   rating!: number;
 
+  @IsOptional()
   @IsString()
-  @MinLength(3)
   @MaxLength(120)
-  title!: string;
+  title?: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(20)
   @MaxLength(4000)
-  body!: string;
+  body?: string;
 
   @IsBoolean()
   hasSpoilers!: boolean;
@@ -95,13 +95,11 @@ export class ReviewUpdateDto {
 
   @IsOptional()
   @IsString()
-  @MinLength(3)
   @MaxLength(120)
   title?: string;
 
   @IsOptional()
   @IsString()
-  @MinLength(20)
   @MaxLength(4000)
   body?: string;
 
@@ -132,6 +130,14 @@ export class ProfileUpdateDto {
   @IsString()
   @MaxLength(80)
   location!: string | null;
+
+  @ValidateIf((value: ProfileUpdateDto) => value.avatarUrl !== null)
+  @IsString()
+  @MaxLength(90000)
+  @Matches(/^(https:\/\/|data:image\/(?:png|jpeg|jpg|webp);base64,)/i, {
+    message: 'Avatar must be an HTTPS image URL or a PNG, JPEG, or WebP data image.',
+  })
+  avatarUrl!: string | null;
 
   @IsString({ each: true })
   @IsArray()

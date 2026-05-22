@@ -20,6 +20,9 @@ export type MediaDetail = MediaSummary & {
   status: string;
   trailerUrl: string | null;
   cast: CastMember[];
+  crew: CrewMember[];
+  producers: CrewMember[];
+  imageUrls: string[];
   similar: MediaSummary[];
   recommendations: Recommendation[];
   buzz?: MediaBuzz;
@@ -31,6 +34,28 @@ export type CastMember = {
   name: string;
   character: string;
   avatarUrl: string | null;
+};
+
+export type CrewMember = {
+  id: number;
+  name: string;
+  job: string;
+  avatarUrl: string | null;
+};
+
+export type PersonDetail = {
+  id: number;
+  name: string;
+  biography: string;
+  birthday: string | null;
+  deathday: string | null;
+  placeOfBirth: string | null;
+  knownForDepartment: string | null;
+  profileUrl: string | null;
+  homepage: string | null;
+  imdbUrl: string | null;
+  imageUrls: string[];
+  knownFor: MediaSummary[];
 };
 
 export type UserSummary = {
@@ -50,6 +75,9 @@ export type Profile = UserSummary & {
     followers: number;
     following: number;
     lists: number;
+    watched: number;
+    favorites: number;
+    watchlist?: number;
   };
   viewer?: {
     isFollowing: boolean;
