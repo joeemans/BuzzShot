@@ -28,6 +28,11 @@ type AuthUser = {
 
 type UserWithProfile = Prisma.UserGetPayload<{ include: { profile: true } }>;
 
+type AccessTokenPayload = {
+  sub?: string;
+  username?: string;
+};
+
 type TokenContext = {
   userAgent?: string;
   ipAddress?: string;
@@ -174,7 +179,10 @@ export class AuthService {
     await this.revokeAllForUser(userId);
   }
 
-  async currentUser(input: { authorization: string | undefined; refreshToken: string | undefined }): Promise<AuthUser> {
+  async currentUser(input: {
+    authorization: string | undefined;
+    refreshToken: string | undefined;
+  }): Promise<AuthUser> {
     const userId = await this.resolveUserId(input);
 
     if (!userId) {
@@ -193,13 +201,22 @@ export class AuthService {
     return this.safeUser(user);
   }
 
-  async resolveUserId(input: { authorization: string | undefined; refreshToken: string | undefined }) {
-    return (await this.userIdFromAuthorization(input.authorization)) ?? (await this.userIdFromRefreshToken(input.refreshToken));
+  async resolveUserId(input: {
+    authorization: string | undefined;
+    refreshToken: string | undefined;
+  }) {
+    return (
+      (await this.userIdFromAuthorization(input.authorization)) ??
+      (await this.userIdFromRefreshToken(input.refreshToken))
+    );
   }
 
   async requestPasswordReset(emailInput: string) {
     const email = this.normalizeEmail(emailInput);
-    const user = await this.prisma.user.findUnique({ where: { email }, select: { id: true, email: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true },
+    });
 
     if (!user) return;
 
@@ -212,7 +229,9 @@ export class AuthService {
       },
     });
 
-    this.logger.log(`Password reset token for ${user.email}: ${rawToken}`);
+    if (this.config.get('PASSWORD_RESET_TOKEN_LOGGING_ENABLED', { infer: true })) {
+      this.logger.warn(`Development password reset token for ${user.email}: ${rawToken}`);
+    }
   }
 
   async confirmPasswordReset(input: { token: string; password: string }) {
@@ -290,7 +309,12 @@ export class AuthService {
     expectedState: string | undefined;
     context: TokenContext;
   }) {
-    if (!input.code || !input.state || !input.expectedState || input.state !== input.expectedState) {
+    if (
+      !input.code ||
+      !input.state ||
+      !input.expectedState ||
+      input.state !== input.expectedState
+    ) {
       throw new UnauthorizedException('Invalid Google OAuth state.');
     }
 
@@ -515,8 +539,8 @@ export class AuthService {
     if (!token) return null;
 
     try {
-      const payload = await this.jwt.verifyAsync<{ sub: string }>(token);
-      return payload.sub;
+      const payload = await this.jwt.verifyAsync<AccessTokenPayload>(token);
+      return typeof payload.sub === 'string' && payload.sub.length > 0 ? payload.sub : null;
     } catch {
       return null;
     }
@@ -557,7 +581,9 @@ export class AuthService {
 
   private async uniqueGoogleUsername(googleUser: GoogleUserInfo) {
     const emailPrefix = googleUser.email?.split('@')[0] ?? 'user';
-    const candidate = this.usernameCandidate(googleUser.given_name ?? googleUser.name ?? emailPrefix);
+    const candidate = this.usernameCandidate(
+      googleUser.given_name ?? googleUser.name ?? emailPrefix,
+    );
     let username = candidate;
     let suffix = 1;
 

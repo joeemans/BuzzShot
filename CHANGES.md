@@ -31,3 +31,8 @@ This file documents intentional implementation choices and deviations from `.age
 - Media details now include horizontal clickable cast, producer/creator, and crew rows, TMDB still galleries, and first-class TMDB-backed person profile pages with known-for credits.
 - Reviews now require an explicit rating while allowing optional written text, and review submission also syncs the standalone rating record.
 - Profile settings now support avatar images through validated HTTPS image URLs or resized local image uploads stored as bounded data images.
+
+## 2026-05-22
+
+- Detail-page cast, stills, and similar-title rows now use bounded horizontal rails with explicit left/right controls so content cannot push navigation outside the viewport.
+- Production auth configuration now validates secure refresh cookies, HTTPS public URLs, real JWT secrets, JWT issuer/audience claims, and disables password-reset token logging outside explicit development opt-in.

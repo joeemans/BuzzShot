@@ -2,7 +2,7 @@
 
 import { Bookmark, CheckCircle2, Heart, Plus, Star, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import type { MediaType } from '@buzzshot/shared';
 import { apiJson } from '@/lib/auth-client';
 import { Button } from './button';
@@ -26,37 +26,48 @@ function ToggleAction({
 }) {
   const router = useRouter();
   const [active, setActive] = useState(initialActive);
-  const [isPending, startTransition] = useTransition();
+  const [isSaving, setIsSaving] = useState(false);
+  const itemKey = mediaType && tmdbId ? `${mediaType}:${tmdbId}` : 'demo';
+  const itemKeyRef = useRef(itemKey);
+  const savingRef = useRef(false);
   const Icon = icon === 'watchlist' ? Bookmark : icon === 'watched' ? CheckCircle2 : Heart;
 
   useEffect(() => {
-    setActive(initialActive);
-  }, [initialActive]);
+    if (itemKeyRef.current !== itemKey) {
+      itemKeyRef.current = itemKey;
+      setActive(initialActive);
+    }
+  }, [initialActive, itemKey]);
 
-  function toggle() {
+  async function toggle() {
+    if (savingRef.current) return;
     if (!mediaType || !tmdbId) {
       setActive((value) => !value);
       return;
     }
+    const previous = active;
     const next = !active;
     setActive(next);
-    startTransition(async () => {
-      try {
-        if (next) {
-          await apiJson(`/${endpoint}`, {
-            method: 'POST',
-            body: JSON.stringify({ mediaType, tmdbId }),
-          });
-        } else {
-          const params = new URLSearchParams({ mediaType, tmdbId: String(tmdbId) });
-          await apiJson(`/${endpoint}?${params.toString()}`, { method: 'DELETE' });
-        }
-        router.refresh();
-      } catch {
-        setActive(!next);
-        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+    savingRef.current = true;
+    setIsSaving(true);
+    try {
+      if (next) {
+        await apiJson(`/${endpoint}`, {
+          method: 'POST',
+          body: JSON.stringify({ mediaType, tmdbId }),
+        });
+      } else {
+        const params = new URLSearchParams({ mediaType, tmdbId: String(tmdbId) });
+        await apiJson(`/${endpoint}?${params.toString()}`, { method: 'DELETE' });
       }
-    });
+      router.refresh();
+    } catch {
+      setActive(previous);
+      router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -65,7 +76,7 @@ function ToggleAction({
       variant={active ? 'primary' : 'secondary'}
       onClick={toggle}
       aria-pressed={active}
-      disabled={isPending}
+      disabled={isSaving}
     >
       <Icon aria-hidden="true" className="h-4 w-4" />
       {active ? activeLabel : label}
@@ -176,11 +187,13 @@ export function RatingControl({
   tmdbId,
   initialRating = 0,
   onChange,
+  label = 'Your rating',
 }: {
   mediaType?: MediaType;
   tmdbId?: number;
   initialRating?: number;
   onChange?: (value: number) => void;
+  label?: string;
 }) {
   const router = useRouter();
   const [rating, setRating] = useState(initialRating);
@@ -223,7 +236,7 @@ export function RatingControl({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Your rating">
+    <div className="flex flex-wrap items-center gap-2" aria-label={label}>
       <div className="flex items-center gap-1">
         {Array.from({ length: 5 }, (_, index) => {
           const value = index + 1;

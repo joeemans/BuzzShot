@@ -16,13 +16,14 @@ export function ReviewForm({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setError(null);
     if (rating < 0.5) {
       setError('Choose a star rating before publishing.');
       return;
     }
     setIsSubmitting(true);
-    const formData = new FormData(event.currentTarget);
+    const formData = new FormData(form);
     const body = String(formData.get('reviewBody') ?? '').trim();
 
     try {
@@ -37,7 +38,7 @@ export function ReviewForm({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId
           hasSpoilers: body ? spoilers : false,
         }),
       });
-      event.currentTarget.reset();
+      form.reset();
       setRating(0);
       setSpoilers(false);
       router.refresh();
@@ -60,7 +61,7 @@ export function ReviewForm({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId
         A rating is required. Written notes are optional.
       </p>
       <div className="mt-4">
-        <RatingControl initialRating={rating} onChange={setRating} />
+        <RatingControl initialRating={rating} onChange={setRating} label="Review rating" />
       </div>
       <label className="mt-4 block text-sm font-semibold">
         Title <span className="font-normal text-muted">(optional)</span>
@@ -89,7 +90,7 @@ export function ReviewForm({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId
         Contains spoilers
       </label>
       {error ? <p className="mt-3 text-sm text-red-200">{error}</p> : null}
-      <Button type="submit" className="mt-5" disabled={isSubmitting}>
+      <Button type="submit" className="mt-5" disabled={isSubmitting || rating < 0.5}>
         {isSubmitting ? 'Publishing…' : 'Publish review'}
       </Button>
     </form>

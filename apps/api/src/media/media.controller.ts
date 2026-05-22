@@ -6,11 +6,13 @@ import {
   NotFoundException,
   Param,
   ParseIntPipe,
+  Query,
   Req,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { AuthService } from '../auth/auth.service.js';
+import { PaginationDto } from '../common/dto.js';
 import { envelope } from '../common/http.js';
 import type { Env } from '../config/env.js';
 import { MediaService } from './media.service.js';
@@ -29,8 +31,8 @@ export class MediaController {
   }
 
   @Get('movies')
-  async movies() {
-    return envelope(await this.media.byType('movie'));
+  async movies(@Query() query: PaginationDto) {
+    return envelope(await this.media.pageByType('movie', query.page));
   }
 
   @Get('movies/popular')
@@ -54,8 +56,8 @@ export class MediaController {
   }
 
   @Get('series')
-  async series() {
-    return envelope(await this.media.byType('series'));
+  async series(@Query() query: PaginationDto) {
+    return envelope(await this.media.pageByType('series', query.page));
   }
 
   @Get('series/popular')

@@ -51,6 +51,8 @@ For Google auth, set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CAL
 
 Auth data is persisted in PostgreSQL through Prisma. Refresh tokens are stored only as hashes in the database and the raw token stays in the HttpOnly cookie.
 
+For production, set `NODE_ENV=production`, `COOKIE_SECURE=true`, HTTPS `API_URL`/`WEB_URL`, and a unique high-entropy `JWT_ACCESS_SECRET` of at least 32 characters. The API validates these settings at startup and rejects the development JWT secret in production.
+
 ## Implemented V1 Surfaces
 
 - Auth: register, login, Google OAuth, refresh rotation, logout, logout all, current user, password reset token generation, password reset confirmation, and password change.

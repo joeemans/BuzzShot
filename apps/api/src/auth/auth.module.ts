@@ -14,7 +14,15 @@ import { ApiAuthGuard } from './api-auth.guard.js';
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({
         secret: config.get('JWT_ACCESS_SECRET', { infer: true }),
-        signOptions: { expiresIn: config.get('JWT_ACCESS_TTL_SECONDS', { infer: true }) },
+        signOptions: {
+          audience: config.get('JWT_ACCESS_AUDIENCE', { infer: true }),
+          expiresIn: config.get('JWT_ACCESS_TTL_SECONDS', { infer: true }),
+          issuer: config.get('JWT_ACCESS_ISSUER', { infer: true }),
+        },
+        verifyOptions: {
+          audience: config.get('JWT_ACCESS_AUDIENCE', { infer: true }),
+          issuer: config.get('JWT_ACCESS_ISSUER', { infer: true }),
+        },
       }),
     }),
   ],

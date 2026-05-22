@@ -1,12 +1,25 @@
 import Link from 'next/link';
 import type { MediaSummary } from '@buzzshot/shared';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 import { RatingStars } from './rating-stars';
 
-export function MediaCard({ media, priority = false }: { media: MediaSummary; priority?: boolean }) {
+export function MediaCard({
+  media,
+  priority = false,
+  className,
+}: {
+  media: MediaSummary;
+  priority?: boolean;
+  className?: string;
+}) {
   const href = `/${media.mediaType === 'movie' ? 'movie' : 'series'}/${media.tmdbId}`;
   return (
-    <article className="group overflow-hidden rounded-md border border-border bg-white/6 transition hover:-translate-y-1 hover:border-primary/50 hover:bg-white/10">
+    <article
+      className={cn(
+        'group overflow-hidden rounded-md border border-border bg-white/6 transition hover:-translate-y-1 hover:border-primary/50 hover:bg-white/10',
+        className,
+      )}
+    >
       <Link href={href} className="block">
         <div className="relative aspect-[2/3] overflow-hidden bg-white/8">
           {media.posterUrl ? (

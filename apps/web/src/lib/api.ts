@@ -67,11 +67,18 @@ export function getTrending() {
   return readApi<MediaSummary[]>('/media/trending', mediaItems.slice(0, 10));
 }
 
-export function getCatalog(mediaType: 'movie' | 'series') {
-  return readApi<MediaSummary[]>(
-    `/media/${mediaType === 'movie' ? 'movies' : 'series'}`,
-    getMediaByType(mediaType),
-  );
+export function getCatalog(mediaType: 'movie' | 'series', page = 1) {
+  const pageSize = 20;
+  const fallbackItems = getMediaByType(mediaType);
+  const safePage = Math.max(1, Math.trunc(page));
+  const path = `/media/${mediaType === 'movie' ? 'movies' : 'series'}?page=${safePage}`;
+
+  return readApi<Paginated<MediaSummary>>(path, {
+    items: fallbackItems.slice((safePage - 1) * pageSize, safePage * pageSize),
+    total: fallbackItems.length,
+    page: safePage,
+    pageSize,
+  });
 }
 
 export function getDetail(mediaType: 'movie' | 'series', tmdbId: number) {

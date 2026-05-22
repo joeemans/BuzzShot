@@ -13,13 +13,13 @@ import {
 } from 'lucide-react';
 import {
   FavoriteButton,
-  RatingControl,
   WatchedButton,
   WatchlistButton,
 } from '@/components/action-buttons';
 import { AuthForm } from '@/components/auth-form';
 import { ActivityFeedItem } from '@/components/activity-feed-item';
 import { ButtonLink } from '@/components/button';
+import { ImageRail } from '@/components/image-rail';
 import { ListCard } from '@/components/list-card';
 import {
   DeleteListButton,
@@ -28,6 +28,7 @@ import {
   MediaListControls,
 } from '@/components/list-actions';
 import { MediaGrid } from '@/components/media-grid';
+import { MediaRail } from '@/components/media-rail';
 import { NewListForm } from '@/components/new-list-form';
 import { MarkNotificationsReadButton } from '@/components/notification-actions';
 import { PaginationControls } from '@/components/pagination-controls';
@@ -185,6 +186,22 @@ function TasteGraphPreview() {
   );
 }
 
+function ViewerRatingDisplay({ value }: { value: number | null | undefined }) {
+  if (typeof value !== 'number' || value < 0.5) {
+    return (
+      <p className="mt-4 rounded border border-border bg-black/20 px-3 py-2 text-sm text-muted">
+        No rating yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-4">
+      <RatingStars value={value} label={`Your rating: ${value.toFixed(1)} out of 5`} size="lg" />
+    </div>
+  );
+}
+
 export async function HomePage() {
   const [trending, reviews, lists] = await Promise.all([getTrending(), getReviews(), getLists()]);
   const hero = trending[0];
@@ -313,9 +330,18 @@ export async function HomePage() {
   );
 }
 
-export async function CatalogPage({ mediaType }: { mediaType: 'movie' | 'series' }) {
-  const items = await getCatalog(mediaType);
+export async function CatalogPage({
+  mediaType,
+  page = 1,
+}: {
+  mediaType: 'movie' | 'series';
+  page?: number;
+}) {
+  const catalog = await getCatalog(mediaType, page);
   const title = mediaType === 'movie' ? 'Movies' : 'Series';
+  const totalPages = Math.max(1, Math.ceil(catalog.total / catalog.pageSize));
+  const basePath = mediaType === 'movie' ? '/movies' : '/series';
+
   return (
     <section className="section py-12">
       <SectionHeader
@@ -323,8 +349,8 @@ export async function CatalogPage({ mediaType }: { mediaType: 'movie' | 'series'
         title={title}
         description={`Discover ${mediaType === 'movie' ? 'films' : 'shows'} by popularity, rating, and community momentum.`}
       />
-      <MediaGrid items={items} />
-      <PaginationControls />
+      <MediaGrid items={catalog.items} />
+      <PaginationControls basePath={basePath} page={catalog.page} totalPages={totalPages} />
     </section>
   );
 }
@@ -485,8 +511,8 @@ export async function DetailPage({
         </div>
       </section>
 
-      <section className="section grid gap-8 py-12 lg:grid-cols-[1fr_360px]">
-        <div className="space-y-10">
+      <section className="section grid min-w-0 gap-8 py-12 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-10">
           <PeopleRow title="Cast" people={detail.cast} />
           <PeopleRow
             title={detail.mediaType === 'movie' ? 'Producers' : 'Creators and producers'}
@@ -494,24 +520,7 @@ export async function DetailPage({
           />
           <PeopleRow title="Key crew" people={detail.crew} />
 
-          {detail.imageUrls.length > 0 ? (
-            <div>
-              <SectionHeader title="Stills" />
-              <div className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {detail.imageUrls.map((url) => (
-                  <img
-                    key={url}
-                    src={url}
-                    alt=""
-                    width={420}
-                    height={236}
-                    loading="lazy"
-                    className="aspect-video w-[22rem] shrink-0 snap-start rounded-md border border-border object-cover"
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
+          <ImageRail title="Stills" imageUrls={detail.imageUrls} />
 
           <div>
             <SectionHeader title="Reviews" />
@@ -527,22 +536,18 @@ export async function DetailPage({
             </div>
           </div>
 
-          <div>
-            <SectionHeader title="Similar titles" />
-            <MediaGrid items={detail.similar} />
-          </div>
+          <MediaRail
+            title="Similar titles"
+            items={detail.similar}
+            emptyTitle="No similar titles found"
+            emptyDescription="TMDB has no linked similar titles yet."
+          />
         </div>
 
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
           <div className="rounded-md border border-border bg-white/6 p-5">
             <h2 className="text-xl font-semibold">Your rating</h2>
-            <div className="mt-4">
-              <RatingControl
-                mediaType={detail.mediaType}
-                tmdbId={detail.tmdbId}
-                initialRating={detail.viewer?.rating ?? 0}
-              />
-            </div>
+            <ViewerRatingDisplay value={detail.viewer?.rating} />
           </div>
           <ReviewForm mediaType={detail.mediaType} tmdbId={detail.tmdbId} />
           <MediaListControls

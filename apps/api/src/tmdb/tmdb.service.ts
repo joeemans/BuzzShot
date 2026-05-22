@@ -119,16 +119,47 @@ export class TmdbService {
   async list(
     mediaType: MediaType,
     list: 'popular' | 'top-rated' | 'now-playing' | 'upcoming' | 'airing-today',
+    page = 1,
   ) {
+    const safePage = Math.max(1, Math.min(500, Math.trunc(page)));
     const endpoint = this.listEndpoint(mediaType, list);
-    const cacheKey = `tmdb:list:${mediaType}:${list}`;
+    const cacheKey = `tmdb:list:${mediaType}:${list}:${safePage}`;
     const response = await this.cached(
       cacheKey,
       cacheTtls.trending,
-      () => this.request<TmdbListResponse<TmdbMovie | TmdbSeries>>(endpoint),
-      this.cacheRecord(0, this.prismaMediaType(mediaType), `list:${mediaType}:${list}`),
+      () => this.request<TmdbListResponse<TmdbMovie | TmdbSeries>>(endpoint, { page: safePage }),
+      this.cacheRecord(0, this.prismaMediaType(mediaType), `list:${mediaType}:${list}:${safePage}`),
     );
     return response.results.map((item) => this.normalizeSummary(item, mediaType)).slice(0, 20);
+  }
+
+  async listPage(
+    mediaType: MediaType,
+    list: 'popular' | 'top-rated' | 'now-playing' | 'upcoming' | 'airing-today',
+    page = 1,
+  ) {
+    const safePage = Math.max(1, Math.min(500, Math.trunc(page)));
+    const endpoint = this.listEndpoint(mediaType, list);
+    const cacheKey = `tmdb:list-page:${mediaType}:${list}:${safePage}`;
+    const response = await this.cached(
+      cacheKey,
+      cacheTtls.trending,
+      () => this.request<TmdbListResponse<TmdbMovie | TmdbSeries>>(endpoint, { page: safePage }),
+      this.cacheRecord(
+        0,
+        this.prismaMediaType(mediaType),
+        `list-page:${mediaType}:${list}:${safePage}`,
+      ),
+    );
+    const pageSize = 20;
+    return {
+      items: response.results
+        .map((item) => this.normalizeSummary(item, mediaType))
+        .slice(0, pageSize),
+      total: Math.min(response.total_results, response.total_pages * pageSize),
+      page: response.page,
+      pageSize,
+    };
   }
 
   async search(query: string) {

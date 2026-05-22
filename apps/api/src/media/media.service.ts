@@ -23,6 +23,14 @@ export class MediaService {
     );
   }
 
+  async pageByType(mediaType: MediaType, pageValue?: number) {
+    const page = Math.max(1, Math.min(500, Math.trunc(pageValue ?? 1)));
+    return this.withFallback(
+      () => this.tmdb.listPage(mediaType, 'popular', page),
+      this.demoPage(mediaType, page),
+    );
+  }
+
   async list(
     mediaType: MediaType,
     list: 'popular' | 'top-rated' | 'now-playing' | 'upcoming' | 'airing-today',
@@ -155,6 +163,17 @@ export class MediaService {
       inWatchlist: false,
       watched: false,
       favorite: false,
+    };
+  }
+
+  private demoPage(mediaType: MediaType, page: number) {
+    const pageSize = 20;
+    const items = demoMedia.filter((item) => item.mediaType === mediaType);
+    return {
+      items: items.slice((page - 1) * pageSize, page * pageSize),
+      total: items.length,
+      page,
+      pageSize,
     };
   }
 
