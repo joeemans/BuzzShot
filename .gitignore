@@ -43,13 +43,10 @@ test-results/
 .vite/
 **/.vite/
 .cache/
-.codex/
-skills-lock.json
 
-# Local agent/tooling artifacts
-.agents/
-.agents/skills/
-AGENTS.md
+# Local workspace notes
+PLANS.md
+CHANGES.md
 *:Zone.Identifier
 
 # Local runtime storage
