@@ -42,17 +42,20 @@ test-results/
 .eslintcache
 .vite/
 **/.vite/
+.cache/
 .codex/
 skills-lock.json
 
 # Local agent/tooling artifacts
 .agents/
 .agents/skills/
-.dockerignore
-.npmrc
-.prettierrc
 AGENTS.md
 *:Zone.Identifier
+
+# Local runtime storage
+storage/
+**/storage/
+.vercel/
 
 # Editor directories and files
 .vscode/*

@@ -1,4 +1,4 @@
-# BuzzShot V2 Plan
+# BuzzShot Plan
 
 The canonical product plan is `.agents/PLANS.md`. This root file exists so the project follows the target repository structure and so contributors know where to start.
 

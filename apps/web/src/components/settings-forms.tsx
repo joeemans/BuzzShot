@@ -152,7 +152,7 @@ export function AccountSettingsPanel({ user }: { user: AuthUser | null }) {
         </div>
       </dl>
       <p className="mt-5 text-sm leading-6 text-muted">
-        Email and username edits need verification flows; v1 keeps them explicit and read-only here.
+        Email and username edits need verification flows, so they stay explicit and read-only here.
       </p>
     </div>
   );

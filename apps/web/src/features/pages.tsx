@@ -222,7 +222,7 @@ export async function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-background/58 to-background" />
         <div className="section relative flex min-h-[82vh] flex-col justify-end pb-20 pt-28">
           <div className="max-w-3xl">
-            <p className="text-sm font-bold uppercase text-primary">BuzzShot V2</p>
+            <p className="text-sm font-bold uppercase text-primary">BuzzShot</p>
             <h1 className="mt-4 text-5xl font-black leading-tight sm:text-7xl">
               Find the next title worth arguing about.
             </h1>
