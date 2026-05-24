@@ -10,10 +10,10 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "prisma:migrate:dev": "prisma migrate dev --schema prisma/schema.prisma",
-    "prisma:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
-    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
-    "db:seed": "tsx prisma/seed.ts"
+    "prisma:migrate:dev": "node ../../scripts/run-with-root-env.mjs prisma migrate dev --schema prisma/schema.prisma",
+    "prisma:migrate:deploy": "node ../../scripts/run-with-root-env.mjs prisma migrate deploy --schema prisma/schema.prisma",
+    "prisma:generate": "node ../../scripts/run-with-root-env.mjs prisma generate --schema prisma/schema.prisma",
+    "db:seed": "node ../../scripts/run-with-root-env.mjs tsx prisma/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",

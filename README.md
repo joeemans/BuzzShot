@@ -88,6 +88,8 @@ The API container runs Prisma migrations before it starts. PostgreSQL, Redis, an
 
 Important variables are documented in `.env.example`.
 
+Keep environment values in the root `.env` file. Prisma migrations, Prisma Client generation, and database seeding are wired to load that root file, so you do not need a separate env file inside `apps/api/prisma`.
+
 - `DATABASE_URL`: PostgreSQL connection string used by Prisma.
 - `REDIS_URL`: Redis connection string used for API caching.
 - `JWT_ACCESS_SECRET`: high-entropy secret for signing access tokens.
