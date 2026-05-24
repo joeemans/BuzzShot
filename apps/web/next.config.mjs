@@ -7,7 +7,15 @@ const normalizeUrl = (value) => {
   return trimmed.replace(/\/+$/, '');
 };
 
-const apiProxyUrl = normalizeUrl(process.env.INTERNAL_API_URL) ?? normalizeUrl(process.env.NEXT_PUBLIC_API_URL);
+const firstAbsoluteUrl = (...values) =>
+  values.map(normalizeUrl).find((value) => value && !value.startsWith('/'));
+
+const apiProxyUrl =
+  firstAbsoluteUrl(
+    process.env.API_PROXY_TARGET_URL,
+    process.env.INTERNAL_API_URL,
+    process.env.NEXT_PUBLIC_API_URL,
+  ) ?? 'http://localhost:4000/api';
 
 const nextConfig = {
   output: 'standalone',
@@ -16,8 +24,6 @@ const nextConfig = {
   },
   transpilePackages: ['@buzzshot/shared'],
   async rewrites() {
-    if (!apiProxyUrl || apiProxyUrl.startsWith('/')) return [];
-
     return [
       {
         source: '/api/:path*',
