@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateEnv } from './env.js';
+import { parseCorsOrigins, validateEnv } from './env.js';
 
 const baseEnv = {
   DATABASE_URL: 'postgresql://buzzshot:buzzshot@localhost:5432/buzzshot?schema=public',
@@ -56,5 +56,12 @@ describe('validateEnv', () => {
 
     expect(env.JWT_ACCESS_SECRET).toHaveLength(48);
     expect(env.COOKIE_SECURE).toBe(true);
+  });
+
+  it('parses comma-separated CORS origins', () => {
+    expect(parseCorsOrigins('https://a.example.com, https://b.example.com')).toEqual([
+      'https://a.example.com',
+      'https://b.example.com',
+    ]);
   });
 });

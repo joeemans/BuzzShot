@@ -26,6 +26,7 @@ const envSchema = z
     API_PORT: z.coerce.number().int().positive().default(4000),
     API_URL: z.string().url().default('http://localhost:4000'),
     WEB_URL: z.string().url().default('http://localhost:3000'),
+    CORS_ORIGINS: z.string().optional(),
     DATABASE_URL: z.string().min(1),
     REDIS_URL: z.string().min(1).default('redis://localhost:6379'),
     JWT_ACCESS_SECRET: z.string().min(32).default(developmentJwtSecret),
@@ -73,6 +74,9 @@ const envSchema = z
 
     requireHttpsUrl(env.API_URL, context, 'API_URL');
     requireHttpsUrl(env.WEB_URL, context, 'WEB_URL');
+    for (const origin of parseCorsOrigins(env.CORS_ORIGINS)) {
+      requireHttpsUrl(origin, context, 'CORS_ORIGINS');
+    }
     if (env.GOOGLE_CALLBACK_URL) {
       requireHttpsUrl(env.GOOGLE_CALLBACK_URL, context, 'GOOGLE_CALLBACK_URL');
     }
@@ -82,4 +86,13 @@ export type Env = z.infer<typeof envSchema>;
 
 export function validateEnv(config: Record<string, unknown>) {
   return envSchema.parse(config);
+}
+
+export function parseCorsOrigins(value: string | undefined) {
+  return (
+    value
+      ?.split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean) ?? []
+  );
 }

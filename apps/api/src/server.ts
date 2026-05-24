@@ -6,6 +6,7 @@ import { NestFactory } from '@nestjs/core';
 import type { INestApplication } from '@nestjs/common';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { AppModule } from './app.module.js';
+import { parseCorsOrigins } from './config/env.js';
 import type { Env } from './config/env.js';
 
 const helmet = helmetPackage as unknown as () => RequestHandler;
@@ -51,6 +52,10 @@ function rateLimiter() {
 export async function createApiApp() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const config = app.get(ConfigService<Env, true>);
+  const allowedOrigins = new Set([
+    config.get('WEB_URL', { infer: true }),
+    ...parseCorsOrigins(config.get('CORS_ORIGINS', { infer: true })),
+  ]);
 
   app.setGlobalPrefix('api');
   app.use(helmet());
@@ -58,7 +63,14 @@ export async function createApiApp() {
   app.use(requestLogger(new Logger('HTTP')));
   app.use(rateLimiter());
   app.enableCors({
-    origin: [config.get('WEB_URL', { infer: true })],
+    origin(origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Origin ${origin} is not allowed by CORS.`));
+    },
     credentials: true,
   });
   app.useGlobalPipes(

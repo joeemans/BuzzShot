@@ -99,6 +99,7 @@ Keep environment values in the root `.env` file. Prisma migrations, Prisma Clien
 - `NEXT_PUBLIC_API_URL`: browser-facing API URL used by the web app.
 - `INTERNAL_API_URL`: server-side API URL used by the Next.js app when running in Docker.
 - `API_URL` and `WEB_URL`: public API and web origins used by the backend.
+- `CORS_ORIGINS`: optional comma-separated list of extra frontend origins allowed to call the API.
 - `TMDB_READ_ACCESS_TOKEN`: preferred TMDB credential for live media data.
 - `TMDB_API_KEY`: optional fallback TMDB credential.
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL`: optional Google OAuth configuration.
@@ -118,6 +119,7 @@ PASSWORD_RESET_TOKEN_LOGGING_ENABLED=false
 JWT_ACCESS_SECRET=<long-random-secret>
 API_URL=https://api.your-domain.com
 WEB_URL=https://your-domain.com
+CORS_ORIGINS=https://your-domain.com
 NEXT_PUBLIC_APP_URL=https://your-domain.com
 NEXT_PUBLIC_API_URL=https://api.your-domain.com/api
 ```

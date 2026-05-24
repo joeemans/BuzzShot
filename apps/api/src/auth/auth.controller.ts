@@ -141,30 +141,36 @@ export class AuthController {
   }
 
   private refreshCookieOptions(): CookieOptions {
+    const secure = this.config.get('COOKIE_SECURE', { infer: true });
+
     return {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: this.config.get('COOKIE_SECURE', { infer: true }),
+      sameSite: secure ? 'none' : 'lax',
+      secure,
       path: '/',
       maxAge: 1000 * 60 * 60 * 24 * this.config.get('REFRESH_TOKEN_TTL_DAYS', { infer: true }),
     };
   }
 
   private oauthCookieOptions(): CookieOptions {
+    const secure = this.config.get('COOKIE_SECURE', { infer: true });
+
     return {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: this.config.get('COOKIE_SECURE', { infer: true }),
+      sameSite: secure ? 'none' : 'lax',
+      secure,
       path: '/api/auth',
       maxAge: 1000 * 60 * 10,
     };
   }
 
   private oauthClearCookieOptions(): CookieOptions {
+    const secure = this.config.get('COOKIE_SECURE', { infer: true });
+
     return {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: this.config.get('COOKIE_SECURE', { infer: true }),
+      sameSite: secure ? 'none' : 'lax',
+      secure,
       path: '/api/auth',
     };
   }
