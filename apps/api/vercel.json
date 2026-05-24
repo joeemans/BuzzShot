@@ -1,7 +1,13 @@
 {
   "buildCommand": "pnpm prisma:generate && pnpm build",
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.ts"
+    }
+  ],
   "functions": {
-    "api/[...path].ts": {
+    "api/index.ts": {
       "maxDuration": 30
     }
   }
