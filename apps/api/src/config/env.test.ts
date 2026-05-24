@@ -24,6 +24,7 @@ describe('validateEnv', () => {
         NODE_ENV: 'production',
         API_URL: 'https://api.example.com',
         WEB_URL: 'https://www.example.com',
+        REDIS_URL: 'rediss://default:password@redis.example.com:6379',
         COOKIE_SECURE: 'true',
       }),
     ).toThrow();
@@ -36,6 +37,7 @@ describe('validateEnv', () => {
         NODE_ENV: 'production',
         API_URL: 'https://api.example.com',
         WEB_URL: 'https://www.example.com',
+        REDIS_URL: 'rediss://default:password@redis.example.com:6379',
         COOKIE_SECURE: 'false',
         JWT_ACCESS_SECRET: 'x'.repeat(48),
       }),
@@ -48,6 +50,7 @@ describe('validateEnv', () => {
       NODE_ENV: 'production',
       API_URL: 'https://api.example.com',
       WEB_URL: 'https://www.example.com',
+      REDIS_URL: 'rediss://default:password@redis.example.com:6379',
       COOKIE_SECURE: 'true',
       JWT_ACCESS_SECRET: 'x'.repeat(48),
       JWT_ACCESS_ISSUER: 'buzzshot-api',
@@ -56,6 +59,33 @@ describe('validateEnv', () => {
 
     expect(env.JWT_ACCESS_SECRET).toHaveLength(48);
     expect(env.COOKIE_SECURE).toBe(true);
+  });
+
+  it('rejects production without Redis', () => {
+    expect(() =>
+      validateEnv({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        API_URL: 'https://api.example.com',
+        WEB_URL: 'https://www.example.com',
+        COOKIE_SECURE: 'true',
+        JWT_ACCESS_SECRET: 'x'.repeat(48),
+      }),
+    ).toThrow();
+  });
+
+  it('rejects production with local Redis', () => {
+    expect(() =>
+      validateEnv({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        API_URL: 'https://api.example.com',
+        WEB_URL: 'https://www.example.com',
+        REDIS_URL: 'redis://localhost:6379',
+        COOKIE_SECURE: 'true',
+        JWT_ACCESS_SECRET: 'x'.repeat(48),
+      }),
+    ).toThrow();
   });
 
   it('parses comma-separated CORS origins', () => {

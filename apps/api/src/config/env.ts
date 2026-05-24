@@ -20,6 +20,32 @@ function requireHttpsUrl(value: string, context: z.RefinementCtx, path: string) 
   });
 }
 
+function requireProductionRedisUrl(value: string, context: z.RefinementCtx) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'redis:' && url.protocol !== 'rediss:') {
+      context.addIssue({
+        code: 'custom',
+        path: ['REDIS_URL'],
+        message: 'REDIS_URL must use redis:// or rediss://.',
+      });
+    }
+    if (['localhost', '127.0.0.1', '0.0.0.0', '[::1]'].includes(url.hostname)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['REDIS_URL'],
+        message: 'REDIS_URL must point to a production Redis instance.',
+      });
+    }
+  } catch {
+    context.addIssue({
+      code: 'custom',
+      path: ['REDIS_URL'],
+      message: 'REDIS_URL must be a valid Redis URL.',
+    });
+  }
+}
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -72,6 +98,7 @@ const envSchema = z
       });
     }
 
+    requireProductionRedisUrl(env.REDIS_URL, context);
     requireHttpsUrl(env.API_URL, context, 'API_URL');
     requireHttpsUrl(env.WEB_URL, context, 'WEB_URL');
     for (const origin of parseCorsOrigins(env.CORS_ORIGINS)) {

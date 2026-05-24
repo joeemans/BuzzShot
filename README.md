@@ -1,29 +1,38 @@
 # BuzzShot
 
-BuzzShot is a social discovery platform for movies and series. It helps people find what to watch next, keep track of what they care about, and build a taste graph around reviews, ratings, lists, follows, and recommendations.
+BuzzShot is a social movie and series discovery platform. It combines TMDB-powered browsing with community features: ratings, reviews, watchlists, favorites, custom lists, follows, activity feeds, notifications, and personalized recommendations.
 
-The app is built around TMDB-powered discovery, but all TMDB traffic stays behind the API. Users can browse movies and shows, search across media, open rich detail pages, rate and review titles, manage watchlists and favorites, publish custom lists, follow other people, read activity feeds, and get personalized picks with clear reasons.
+The app is built as a full-stack TypeScript monorepo. The web app talks to the BuzzShot API, and the API handles TMDB requests, authentication, persistence, caching, and private user data.
 
-## Stack
+## Features
 
-BuzzShot is a TypeScript monorepo managed with `pnpm`.
+- Browse trending, popular, top-rated, upcoming, and currently airing titles.
+- Search movies, series, users, reviews, and lists.
+- Open rich media pages with cast, crew, trailers, images, similar titles, and recommendations.
+- Create an account with email/password auth and rotating HttpOnly refresh cookies.
+- Rate, review, like, comment, and track movies or series.
+- Manage watchlist, watched items, favorites, and custom lists.
+- Follow people and lists, then read a personalized activity feed.
+- Cache TMDB responses with Redis and persist longer-lived media cache records in PostgreSQL.
+
+## Tech Stack
+
+BuzzShot uses `pnpm` workspaces:
 
 - `apps/web`: Next.js App Router, React, Tailwind CSS, TanStack Query, React Hook Form, Zod, Vitest, and Playwright.
-- `apps/api`: NestJS, Prisma, PostgreSQL, Redis, JWT access tokens, HttpOnly refresh-token cookies, Helmet, CORS, and Zod-based environment validation.
-- `packages/shared`: shared types, schemas, and constants used by the web and API apps.
-- Local infrastructure: Docker Compose with PostgreSQL 16 and Redis 7.
+- `apps/api`: NestJS, Prisma, PostgreSQL, Redis, JWT access tokens, HttpOnly refresh cookies, Helmet, CORS, and environment validation with Zod.
+- `packages/shared`: shared TypeScript types, schemas, and constants used by both apps.
+- Local services: Docker Compose with PostgreSQL 16 and Redis 7.
 
 ## Requirements
 
-Install these before running the project:
-
 - Node.js `22` or newer.
-- `pnpm` `10` or newer. The project was generated with `pnpm@11.1.3`.
-- Docker and Docker Compose for PostgreSQL and Redis.
+- `pnpm` `10` or newer.
+- Docker and Docker Compose.
 - A TMDB API Read Access Token for live movie and series data.
-- Optional Google OAuth credentials if you want Google sign-in.
+- Optional Google OAuth credentials if you want Google sign-in locally.
 
-## Local Setup
+## Getting Started
 
 Install dependencies:
 
@@ -37,7 +46,7 @@ Create your local environment file:
 cp .env.example .env
 ```
 
-At minimum, update these values in `.env`:
+Update at least these values in `.env`:
 
 ```bash
 JWT_ACCESS_SECRET=replace-with-a-long-random-secret
@@ -50,115 +59,93 @@ Start PostgreSQL and Redis:
 docker compose up -d postgres redis
 ```
 
-Run Prisma migrations and seed the database:
+Run database migrations and seed data:
 
 ```bash
 pnpm db:migrate
 pnpm db:seed
 ```
 
-Start the web and API apps:
+Start the local development servers:
 
 ```bash
 pnpm dev
 ```
 
-The web app runs at `http://localhost:3000`.
-The API runs at `http://localhost:4000/api`.
+Open the app at `http://localhost:3000`. The API is available at `http://localhost:4000/api`.
 
-## Docker Setup
+## Docker
 
-To run the full local stack with Docker:
+You can also run the full local stack with Docker Compose:
 
 ```bash
 cp .env.example .env
 docker compose up --build
 ```
 
-Docker Compose starts:
+This starts:
 
 - Web: `http://localhost:3000`
 - API: `http://localhost:4000/api`
 - PostgreSQL: `localhost:5432`
 - Redis: `localhost:6379`
 
-The API container runs Prisma migrations before it starts. PostgreSQL, Redis, and API storage use named Docker volumes so data survives container restarts.
+The API container runs Prisma migrations before startup. PostgreSQL, Redis, and API storage use named Docker volumes, so local data survives container restarts.
 
-## Environment Variables
+## Environment
 
-Important variables are documented in `.env.example`.
+All local environment values live in the root `.env` file. Prisma commands are wired to load that file, so you do not need a second `.env` inside `apps/api/prisma`.
 
-Keep environment values in the root `.env` file. Prisma migrations, Prisma Client generation, and database seeding are wired to load that root file, so you do not need a separate env file inside `apps/api/prisma`.
+Important variables:
 
 - `DATABASE_URL`: PostgreSQL connection string used by Prisma.
-- `REDIS_URL`: Redis connection string used for API caching.
-- `JWT_ACCESS_SECRET`: high-entropy secret for signing access tokens.
-- `JWT_ACCESS_ISSUER` and `JWT_ACCESS_AUDIENCE`: JWT validation metadata.
+- `REDIS_URL`: Redis connection string used by the API cache.
+- `JWT_ACCESS_SECRET`: secret used to sign access tokens.
 - `REFRESH_TOKEN_COOKIE_NAME` and `REFRESH_TOKEN_TTL_DAYS`: refresh-session cookie settings.
-- `COOKIE_SECURE`: set to `true` in production behind HTTPS.
-- `NEXT_PUBLIC_API_URL`: browser-facing API URL used by the web app.
-- `INTERNAL_API_URL`: server-side API URL used by the Next.js app when running in Docker.
+- `COOKIE_SECURE`: keep `false` for local HTTP development.
+- `NEXT_PUBLIC_APP_URL`: local web origin.
+- `NEXT_PUBLIC_API_URL`: browser-facing API URL.
+- `INTERNAL_API_URL`: server-side API URL used by the Next.js app in Docker.
 - `API_URL` and `WEB_URL`: public API and web origins used by the backend.
-- `CORS_ORIGINS`: optional comma-separated list of extra frontend origins allowed to call the API.
-- `TMDB_READ_ACCESS_TOKEN`: preferred TMDB credential for live media data.
-- `TMDB_API_KEY`: optional fallback TMDB credential.
+- `CORS_ORIGINS`: optional comma-separated list of extra allowed frontend origins.
+- `TMDB_READ_ACCESS_TOKEN`: preferred TMDB credential.
+- `TMDB_API_KEY`: optional TMDB fallback credential.
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL`: optional Google OAuth configuration.
 
-Never expose TMDB credentials through `NEXT_PUBLIC_*` variables. The frontend talks to BuzzShot's API, and the API talks to TMDB.
+Do not put TMDB credentials in `NEXT_PUBLIC_*` variables. TMDB calls belong in the API, not in the browser.
 
-## Self-Hosting Notes
-
-For a production deployment, use managed PostgreSQL and a managed Redis service when possible. Build and run the web and API apps as separate services, then point both at the same production environment values.
-
-Recommended production settings:
+## Useful Commands
 
 ```bash
-NODE_ENV=production
-COOKIE_SECURE=true
-PASSWORD_RESET_TOKEN_LOGGING_ENABLED=false
-JWT_ACCESS_SECRET=<long-random-secret>
-API_URL=https://api.your-domain.com
-WEB_URL=https://your-domain.com
-CORS_ORIGINS=https://your-domain.com
-NEXT_PUBLIC_APP_URL=https://your-domain.com
-NEXT_PUBLIC_API_URL=https://api.your-domain.com/api
+pnpm dev          # run web and API in development mode
+pnpm build        # build all workspaces
+pnpm lint         # run ESLint
+pnpm typecheck    # run TypeScript checks
+pnpm test         # run unit tests
+pnpm db:migrate   # run local Prisma migrations
+pnpm db:seed      # seed local data
 ```
 
-Run database migrations during deployment:
-
-```bash
-pnpm db:deploy
-```
-
-Then start the services:
-
-```bash
-pnpm --filter api start
-pnpm --filter web start
-```
-
-If you deploy with Docker, build from the included `apps/api/Dockerfile` and `apps/web/Dockerfile`. The web image needs `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_API_URL` available as build args, because Next.js bakes public variables into the client bundle.
-
-After deployment, verify:
-
-```bash
-curl https://api.your-domain.com/api/health
-```
-
-## Quality Checks
-
-Run these before opening a pull request or deploying:
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
-pnpm --filter web test:e2e
-```
-
-Playwright may need browser binaries installed locally:
+Playwright browser binaries may need to be installed before E2E tests:
 
 ```bash
 pnpm --filter web exec playwright install
+pnpm --filter web test:e2e
 ```
+
+## Project Structure
+
+```text
+apps/
+  api/       NestJS API, Prisma schema, auth, TMDB integration, and domain modules
+  web/       Next.js app, routes, UI components, and client/server data helpers
+packages/
+  shared/    Shared schemas, types, and constants
+scripts/     Project scripts used by local database and Prisma commands
+```
+
+## Notes
+
+- Keep PostgreSQL and Redis running while using the app locally.
+- If TMDB credentials are missing or TMDB is unavailable, parts of the interface may fall back to local demo data.
+- Password reset currently logs a development token when enabled. Keep `PASSWORD_RESET_TOKEN_LOGGING_ENABLED=false` outside local development.
