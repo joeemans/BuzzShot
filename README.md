@@ -114,6 +114,30 @@ Important variables:
 
 Do not put TMDB credentials in `NEXT_PUBLIC_*` variables. TMDB calls belong in the API, not in the browser.
 
+## Vercel Deployment
+
+For the current split deployment, configure the web project with:
+
+```bash
+NEXT_PUBLIC_APP_URL=https://buzz-shot-web.vercel.app
+NEXT_PUBLIC_API_URL=https://buzz-shot-api.vercel.app/api
+```
+
+Configure the API project with:
+
+```bash
+NODE_ENV=production
+API_URL=https://buzz-shot-api.vercel.app
+WEB_URL=https://buzz-shot-web.vercel.app
+CORS_ORIGINS=https://buzz-shot-web.vercel.app
+COOKIE_SECURE=true
+DATABASE_URL=your-production-postgres-url
+REDIS_URL=your-production-redis-url
+JWT_ACCESS_SECRET=your-long-random-production-secret
+```
+
+Redeploy the web app after changing `NEXT_PUBLIC_API_URL`; Next.js embeds `NEXT_PUBLIC_*` values into the browser bundle at build time. Redis is used only by `apps/api` as a TMDB response cache. It is not used by the web app, and production API startup rejects localhost Redis URLs.
+
 ## Useful Commands
 
 ```bash

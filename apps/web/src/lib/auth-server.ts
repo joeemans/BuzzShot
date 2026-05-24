@@ -1,8 +1,8 @@
 import { cookies } from 'next/headers';
 import type { ApiEnvelope, AuthUser } from '@buzzshot/shared';
+import { serverApiUrl } from './api-url';
 
-const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
-const API_URL = process.env.INTERNAL_API_URL ?? PUBLIC_API_URL;
+const API_URL = serverApiUrl();
 
 export async function getCurrentUser() {
   const cookieHeader = (await cookies()).toString();

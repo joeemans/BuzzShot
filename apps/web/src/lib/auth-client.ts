@@ -1,8 +1,9 @@
 'use client';
 
 import type { ApiEnvelope, AuthUser, LoginInput, RegisterInput } from '@buzzshot/shared';
+import { publicApiUrl } from './api-url';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
+const API_URL = publicApiUrl();
 
 type AuthSession = {
   user: AuthUser;
