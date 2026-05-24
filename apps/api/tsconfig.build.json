@@ -4,5 +4,5 @@
     "noEmit": false,
     "rootDir": "src"
   },
-  "exclude": ["test/**/*.ts", "**/*.spec.ts", "prisma/**/*.ts"]
+  "exclude": ["api/**/*.ts", "test/**/*.ts", "**/*.spec.ts", "prisma/**/*.ts"]
 }

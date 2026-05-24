@@ -16,5 +16,5 @@
       "@buzzshot/shared/*": ["../../packages/shared/src/*"]
     }
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "prisma/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "prisma/**/*.ts", "api/**/*.ts"]
 }
