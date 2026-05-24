@@ -12,7 +12,9 @@ function requestLogger(logger: Logger) {
   return (request: Request, response: Response, next: NextFunction) => {
     const startedAt = Date.now();
     response.on('finish', () => {
-      logger.log(`${request.method} ${request.originalUrl} ${response.statusCode} ${Date.now() - startedAt}ms`);
+      logger.log(
+        `${request.method} ${request.originalUrl} ${response.statusCode} ${Date.now() - startedAt}ms`,
+      );
     });
     next();
   };
@@ -67,7 +69,10 @@ async function bootstrap() {
     }),
   );
 
-  const port = config.get('API_PORT', { infer: true });
+  const port = process.env.PORT
+    ? Number(process.env.PORT)
+    : config.get('API_PORT', { infer: true });
+
   await app.listen(port);
   logger.log(`BuzzShot API listening on http://localhost:${port}/api`);
 }
